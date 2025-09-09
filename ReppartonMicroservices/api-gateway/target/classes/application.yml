@@ -1,0 +1,101 @@
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        # User Service Routes
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/users/**, /api/auth/**
+          filters:
+            - name: JwtAuthenticationFilter
+
+        # Song Service Routes
+        - id: song-service
+          uri: lb://song-service
+          predicates:
+            - Path=/api/songs/**, /api/genres/**
+          filters:
+            - name: JwtAuthenticationFilter
+
+        # Social Service Routes
+        - id: social-service
+          uri: lb://social-service
+          predicates:
+            - Path=/api/social/**
+          filters:
+            - name: JwtAuthenticationFilter
+
+        # Playlist Service Routes
+        - id: playlist-service
+          uri: lb://playlist-service
+          predicates:
+            - Path=/api/playlists/**
+          filters:
+            - name: JwtAuthenticationFilter
+
+        # Comment Service Routes
+        - id: comment-service
+          uri: lb://comment-service
+          predicates:
+            - Path=/api/comments/**
+          filters:
+            - name: JwtAuthenticationFilter
+
+        # Notification Service Routes
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/notifications/**, /ws/notifications/**
+          filters:
+            - name: JwtAuthenticationFilter
+
+        # Event Service Routes
+        - id: event-service
+          uri: lb://event-service
+          predicates:
+            - Path=/api/events/**
+          filters:
+            - name: JwtAuthenticationFilter
+
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "${CORS_ALLOWED_ORIGINS:*}"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+
+server:
+  port: ${SERVER_PORT:8080}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+
+jwt:
+  secret: ${JWT_SECRET:repparton-secret-key-for-jwt-authentication-2024}
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG

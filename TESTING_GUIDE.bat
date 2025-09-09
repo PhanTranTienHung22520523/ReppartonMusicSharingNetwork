@@ -1,0 +1,162 @@
+@echo off
+REM Repparton Application Test Script for Windows
+REM This script helps test all major functionality of the application
+
+echo 🚀 Repparton Application Testing Guide
+echo =======================================
+
+echo.
+echo 📋 Pre-Test Checklist:
+echo 1. Backend running on http://localhost:8080
+echo 2. Frontend running on http://localhost:5173
+echo 3. Both applications started without errors
+
+echo.
+echo 🧪 Manual Testing Steps:
+echo.
+
+echo STEP 1: Guest User Testing
+echo -------------------------
+echo 1. Open http://localhost:5173
+echo 2. ✅ Home page loads with trending content
+echo 3. ✅ Can navigate to Discover page
+echo 4. ✅ Can browse songs and posts
+echo 5. ✅ Login modal appears when trying to like/follow
+echo.
+
+echo STEP 2: Login Testing
+echo --------------------
+echo Test with these sample accounts:
+echo.
+echo Admin Account:
+echo   Email: admin@repparton.com
+echo   Password: admin123
+echo.
+echo Artist Accounts:
+echo   Taylor Swift - taylor@repparton.com / password123
+echo   Ed Sheeran - ed@repparton.com / password123
+echo   Billie Eilish - billie@repparton.com / password123
+echo   The Weeknd - weeknd@repparton.com / password123
+echo.
+echo Regular Users:
+echo   Sarah - sarah@example.com / password123
+echo   Alex - alex@example.com / password123
+echo   Mike - mike@example.com / password123
+echo.
+echo Testing Steps:
+echo 1. ✅ Click Login in header
+echo 2. ✅ Enter credentials and submit
+echo 3. ✅ Redirected to home page
+echo 4. ✅ User info appears in header
+echo 5. ✅ Sidebar shows user-specific options
+echo.
+
+echo STEP 3: Registration Testing
+echo ---------------------------
+echo 1. ✅ Click Register from login page
+echo 2. ✅ Fill out registration form
+echo 3. ✅ Successfully creates account
+echo 4. ✅ Automatically logs in new user
+echo.
+
+echo STEP 4: Navigation Testing
+echo -------------------------
+echo Test all main pages:
+echo 1. ✅ Home - Shows personalized feed
+echo 2. ✅ Discover - Browse by genre
+echo 3. ✅ Profile - User profile page
+echo 4. ✅ Playlists - User playlists
+echo 5. ✅ Upload - Song upload (artists only)
+echo 6. ✅ Messages - Messaging system
+echo 7. ✅ Settings - Account settings
+echo 8. ✅ Listen - Music player page
+echo.
+
+echo STEP 5: Social Features Testing
+echo ------------------------------
+echo 1. ✅ Like posts and songs
+echo 2. ✅ Follow/unfollow users
+echo 3. ✅ Add comments to posts
+echo 4. ✅ Create and share posts
+echo 5. ✅ View user profiles
+echo 6. ✅ Browse user's content
+echo.
+
+echo STEP 6: Artist Features Testing
+echo ------------------------------
+echo Login as an artist account and test:
+echo 1. ✅ Upload new songs
+echo 2. ✅ Manage uploaded content
+echo 3. ✅ View artist-specific features
+echo 4. ✅ Artist profile displays correctly
+echo.
+
+echo STEP 7: Playlist Testing
+echo -----------------------
+echo 1. ✅ Create new playlist
+echo 2. ✅ Add songs to playlist
+echo 3. ✅ Edit playlist details
+echo 4. ✅ Delete songs from playlist
+echo 5. ✅ Play playlist
+echo.
+
+echo STEP 8: Search and Discovery
+echo ---------------------------
+echo 1. ✅ Search for users
+echo 2. ✅ Search for songs
+echo 3. ✅ Browse by genre
+echo 4. ✅ View trending content
+echo 5. ✅ Discover new artists
+echo.
+
+echo STEP 9: Error Handling Testing
+echo -----------------------------
+echo 1. ✅ Invalid login credentials show error
+echo 2. ✅ Network errors are handled gracefully
+echo 3. ✅ Form validation works correctly
+echo 4. ✅ Protected routes redirect properly
+echo 5. ✅ Loading states display during API calls
+echo.
+
+echo STEP 10: Logout Testing
+echo ----------------------
+echo 1. ✅ Click logout in header/sidebar
+echo 2. ✅ User is logged out
+echo 3. ✅ Redirected to home page
+echo 4. ✅ Protected features are disabled
+echo 5. ✅ Login modal appears for protected actions
+echo.
+
+echo.
+echo 🐛 Common Issues to Check:
+echo ==========================
+echo • Console errors in browser DevTools
+echo • Network tab for failed API requests
+echo • 403/401 errors for authentication
+echo • CORS errors between frontend/backend
+echo • Missing or broken images
+echo • Broken navigation links
+echo • Form submission errors
+echo • Responsive design on mobile
+echo.
+
+echo ✅ Testing Complete!
+echo ===================
+echo If all steps pass, the application is working correctly.
+echo Report any failing tests or unexpected behavior.
+
+echo.
+echo 🔧 Backend API Testing:
+echo You can also test the API directly using:
+echo • Postman collections in Repparton/ folder
+echo • API_Tests.http file for VS Code REST Client
+echo • Browser: http://localhost:8080/api/songs/trending
+echo.
+
+echo 📊 Database Inspection:
+echo H2 Console: http://localhost:8080/h2-console
+echo JDBC URL: jdbc:h2:mem:testdb
+echo Username: sa
+echo Password: (leave empty)
+
+pause

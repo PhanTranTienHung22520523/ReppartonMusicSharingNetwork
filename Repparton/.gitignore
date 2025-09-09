@@ -1,0 +1,32 @@
+# Java
+*.class
+*.jar
+*.war
+*.ear
+
+# Maven
+/target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# IDEs and editors
+/.idea/
+*.iml
+*.ipr
+*.iws
+*.log
+*.swp
+*.swo
+*.DS_Store
+*.vscode/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Sensitive files
+application-*.properties
+.env
+
+# Others
+node_modules/
+

@@ -1,0 +1,1757 @@
+{
+	"info": {
+		"_postman_id": "repparton-api-collection",
+		"name": "Repparton - Facebook + SoundCloud Platform",
+		"description": "Complete API collection for testing the social music platform with authentication, music streaming, social posts, likes, follows, and real-time features.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "repparton-platform"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{auth_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Auto-set timestamp for requests",
+					"pm.globals.set('timestamp', new Date().toISOString());"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080/api",
+			"type": "string",
+			"description": "Base URL for the Repparton API"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string",
+			"description": "JWT authentication token - will be set after login"
+		},
+		{
+			"key": "user_id",
+			"value": "",
+			"type": "string",
+			"description": "Current user ID - will be set after registration/login"
+		},
+		{
+			"key": "artist_id",
+			"value": "",
+			"type": "string",
+			"description": "Artist user ID for testing artist features"
+		},
+		{
+			"key": "song_id",
+			"value": "",
+			"type": "string",
+			"description": "Song ID for testing song-related features"
+		},
+		{
+			"key": "post_id",
+			"value": "",
+			"type": "string",
+			"description": "Post ID for testing post-related features"
+		}
+	],
+	"item": [
+		{
+			"name": "🔐 Authentication",
+			"description": "User registration, login, and authentication flow",
+			"item": [
+				{
+					"name": "Register User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success && response.user) {",
+									"        pm.collectionVariables.set('user_id', response.user.id);",
+									"        pm.test('User registered successfully', () => {",
+									"            pm.expect(response.success).to.be.true;",
+									"        });",
+									"    }",
+									"} else {",
+									"    pm.test('Registration failed or user exists', () => {",
+									"        pm.expect(pm.response.code).to.be.oneOf([200, 400]);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"john_doe_{{$timestamp}}\",\n  \"email\": \"john.test.{{$timestamp}}@example.com\",\n  \"password\": \"password123\",\n  \"confirmPassword\": \"password123\",\n  \"bio\": \"Music lover and content creator - Test Account\",\n  \"avatarUrl\": \"\",\n  \"coverUrl\": \"\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"register"
+							]
+						},
+						"description": "Register a new user account with unique username and email"
+					},
+					"response": []
+				},
+				{
+					"name": "Register Artist User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success && response.user) {",
+									"        pm.collectionVariables.set('artist_id', response.user.id);",
+									"        pm.test('Artist user registered successfully', () => {",
+									"            pm.expect(response.success).to.be.true;",
+									"        });",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"artist_test_{{$timestamp}}\",\n  \"email\": \"artist.test.{{$timestamp}}@example.com\",\n  \"password\": \"artist123\",\n  \"confirmPassword\": \"artist123\",\n  \"bio\": \"Professional musician and artist - Test Account\",\n  \"avatarUrl\": \"\",\n  \"coverUrl\": \"\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"register"
+							]
+						},
+						"description": "Register a new artist user account for testing music upload features"
+					},
+					"response": []
+				},
+				{
+					"name": "Login User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success && response.token) {",
+									"        pm.collectionVariables.set('auth_token', response.token);",
+									"        pm.test('Login successful', () => {",
+									"            pm.expect(response.success).to.be.true;",
+									"            pm.expect(response.token).to.be.a('string');",
+									"        });",
+									"    }",
+									"} else {",
+									"    pm.test('Login failed', () => {",
+									"        pm.expect(pm.response.code).to.equal(400);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"john.test.{{$timestamp}}@example.com\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"login"
+							]
+						},
+						"description": "Login user and get JWT authentication token"
+					},
+					"response": []
+				},
+				{
+					"name": "Login Artist",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success && response.token) {",
+									"        pm.test('Artist login successful', () => {",
+									"            pm.expect(response.success).to.be.true;",
+									"            pm.expect(response.token).to.be.a('string');",
+									"        });",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"artist.test.{{$timestamp}}@example.com\",\n  \"password\": \"artist123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"login"
+							]
+						},
+						"description": "Login artist user for testing music upload features"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "👤 User Management",
+			"description": "User profile management, artist applications, and user search",
+			"item": [
+				{
+					"name": "Get User Profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Profile retrieved successfully', () => {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/{{user_id}}/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"{{user_id}}",
+								"profile"
+							]
+						},
+						"description": "Get detailed user profile with follower/following counts and songs"
+					},
+					"response": []
+				},
+				{
+					"name": "Update User Profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Profile updated successfully', () => {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"john_updated_test\",\n  \"bio\": \"Updated bio - Professional musician and content creator 🎵\",\n  \"avatarUrl\": \"\",\n  \"coverUrl\": \"\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/{{user_id}}/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"{{user_id}}",
+								"profile"
+							]
+						},
+						"description": "Update user profile information"
+					},
+					"response": []
+				},
+				{
+					"name": "Apply to be Artist",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Artist application submitted', () => {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 400]);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/{{user_id}}/apply-artist",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"{{user_id}}",
+								"apply-artist"
+							]
+						},
+						"description": "Apply to become an artist to upload music"
+					},
+					"response": []
+				},
+				{
+					"name": "Search Users",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('User search works', () => {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"    const users = pm.response.json();",
+									"    pm.expect(users).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/search?query=test",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"search"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "test"
+								}
+							]
+						},
+						"description": "Search for users by username"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Pending Artist Requests (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/pending-artists",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"pending-artists"
+							]
+						},
+						"description": "Get list of pending artist applications (Admin only)"
+					},
+					"response": []
+				},
+				{
+					"name": "Approve Artist Request (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/{{user_id}}/approve-artist",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"{{user_id}}",
+								"approve-artist"
+							]
+						},
+						"description": "Approve user's artist application (Admin only)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🎵 Music Streaming",
+			"description": "Song upload, streaming, recommendations, and music discovery",
+			"item": [
+				{
+					"name": "Upload Song",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success && response.song) {",
+									"        pm.collectionVariables.set('song_id', response.song.id);",
+									"        pm.test('Song uploaded successfully', () => {",
+									"            pm.expect(response.success).to.be.true;",
+									"        });",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "title",
+									"value": "Test Song - {{$timestamp}}",
+									"type": "text",
+									"description": "Song title"
+								},
+								{
+									"key": "artistId",
+									"value": "{{artist_id}}",
+									"type": "text",
+									"description": "Artist user ID"
+								},
+								{
+									"key": "audioFile",
+									"type": "file",
+									"src": [],
+									"description": "MP3/WAV/FLAC audio file"
+								},
+								{
+									"key": "coverFile",
+									"type": "file",
+									"src": [],
+									"description": "Cover image (optional)"
+								},
+								{
+									"key": "isPrivate",
+									"value": "false",
+									"type": "text",
+									"description": "Set to true for private songs"
+								},
+								{
+									"key": "genreIds",
+									"value": "rock,pop,electronic",
+									"type": "text",
+									"description": "Comma-separated genre IDs"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/songs/upload",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"songs",
+								"upload"
+							]
+						},
+						"description": "Upload a new song with audio file and metadata. Requires artist role."
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Public Songs",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Public songs retrieved', () => {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.content).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/songs/public?page=0&size=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"songs",
+								"public"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "20"
+								}
+							]
+						},
+						"description": "Get paginated list of all public approved songs"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Song by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/songs/{{song_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"songs",
+								"{{song_id}}"
+							]
+						},
+						"description": "Get detailed information about a specific song"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Songs by Artist",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/songs/artist/{{artist_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"songs",
+								"artist",
+								"{{artist_id}}"
+							]
+						},
+						"description": "Get all songs by a specific artist"
+					},
+					"response": []
+				},
+				{
+					"name": "Search Songs",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Song search works', () => {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/songs/search?title=test&page=0&size=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"songs",
+								"search"
+							],
+							"query": [
+								{
+									"key": "title",
+									"value": "test"
+								},
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Search songs by title with pagination"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Songs by Genre",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/songs/genre/rock?page=0&size=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"songs",
+								"genre",
+								"rock"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Get songs filtered by genre"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Trending Songs",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Trending songs retrieved', () => {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"    const songs = pm.response.json();",
+									"    pm.expect(songs).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/songs/trending?limit=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"songs",
+								"trending"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Get trending songs based on views and engagement"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Recommended Songs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/songs/recommendations?limit=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"songs",
+								"recommendations"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Get personalized song recommendations based on listening history"
+					},
+					"response": []
+				},
+				{
+					"name": "Play Song (Record View)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Song play recorded', () => {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/songs/{{song_id}}/play",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"songs",
+								"{{song_id}}",
+								"play"
+							]
+						},
+						"description": "Record a song play/view and update listening history"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Pending Songs (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/songs/pending",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"songs",
+								"pending"
+							]
+						},
+						"description": "Get list of songs pending approval (Admin only)"
+					},
+					"response": []
+				},
+				{
+					"name": "Approve Song (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/songs/{{song_id}}/approve",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"songs",
+								"{{song_id}}",
+								"approve"
+							]
+						},
+						"description": "Approve a pending song (Admin only)"
+					},
+					"response": []
+				},
+				{
+					"name": "Reject Song (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Audio quality does not meet our standards. Please upload a higher quality version.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/songs/{{song_id}}/reject",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"songs",
+								"{{song_id}}",
+								"reject"
+							]
+						},
+						"description": "Reject a pending song with reason (Admin only)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Song",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/songs/{{song_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"songs",
+								"{{song_id}}"
+							]
+						},
+						"description": "Delete a song (owner or admin only)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📱 Social Posts",
+			"description": "Create posts, manage feeds, trending content, and social interactions",
+			"item": [
+				{
+					"name": "Create Text Post",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success && response.post) {",
+									"        pm.collectionVariables.set('post_id', response.post.id);",
+									"        pm.test('Post created successfully', () => {",
+									"            pm.expect(response.success).to.be.true;",
+									"        });",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "content",
+									"value": "Just uploaded a new song! Check it out 🎵 #newmusic #test #repparton",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/posts",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"posts"
+							]
+						},
+						"description": "Create a new text post"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Post with Media",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "content",
+									"value": "Sharing some behind-the-scenes from my studio! 🎤📸 #studio #music #creation",
+									"type": "text"
+								},
+								{
+									"key": "mediaFile",
+									"type": "file",
+									"src": [],
+									"description": "Image or video file"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/posts",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"posts"
+							]
+						},
+						"description": "Create a post with media attachment (image/video)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Posts",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Posts retrieved successfully', () => {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.content).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/posts?page=0&size=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"posts"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "20"
+								}
+							]
+						},
+						"description": "Get paginated list of all posts"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Feed (Personalized)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/posts/feed?page=0&size=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"posts",
+								"feed"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "20"
+								}
+							]
+						},
+						"description": "Get personalized feed based on followed users"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Posts by User",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/posts/user/{{user_id}}?page=0&size=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"posts",
+								"user",
+								"{{user_id}}"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Get all posts by a specific user"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Post by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/posts/{{post_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"posts",
+								"{{post_id}}"
+							]
+						},
+						"description": "Get detailed information about a specific post"
+					},
+					"response": []
+				},
+				{
+					"name": "Search Posts",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/posts/search?query=music&page=0&size=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"posts",
+								"search"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "music"
+								},
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Search posts by content"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Trending Posts",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Trending posts retrieved', () => {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"    const posts = pm.response.json();",
+									"    pm.expect(posts).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/posts/trending?limit=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"posts",
+								"trending"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Get trending posts based on likes and engagement"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Post",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Post updated successfully', () => {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"content\": \"Updated post content with new information! 🎵✨ #updated #music #social\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/posts/{{post_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"posts",
+								"{{post_id}}"
+							]
+						},
+						"description": "Update an existing post's content"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Post",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/posts/{{post_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"posts",
+								"{{post_id}}"
+							]
+						},
+						"description": "Delete a post (owner only)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "❤️ Like System",
+			"description": "Like and unlike songs and posts, check like status and counts",
+			"item": [
+				{
+					"name": "Like/Unlike Song",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Song like toggle works', () => {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.action).to.be.oneOf(['liked', 'unliked']);",
+									"    pm.expect(response.totalLikes).to.be.a('number');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/likes/song/{{song_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"likes",
+								"song",
+								"{{song_id}}"
+							]
+						},
+						"description": "Toggle like status for a song (like if not liked, unlike if already liked)"
+					},
+					"response": []
+				},
+				{
+					"name": "Like/Unlike Post",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Post like toggle works', () => {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.action).to.be.oneOf(['liked', 'unliked']);",
+									"    pm.expect(response.totalLikes).to.be.a('number');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/likes/post/{{post_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"likes",
+								"post",
+								"{{post_id}}"
+							]
+						},
+						"description": "Toggle like status for a post"
+					},
+					"response": []
+				},
+				{
+					"name": "Check Song Like Status",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Song like status retrieved', () => {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.hasLiked).to.be.a('boolean');",
+									"    pm.expect(response.totalLikes).to.be.a('number');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/likes/song/{{song_id}}/check",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"likes",
+								"song",
+								"{{song_id}}",
+								"check"
+							]
+						},
+						"description": "Check if current user has liked a song and get total like count"
+					},
+					"response": []
+				},
+				{
+					"name": "Check Post Like Status",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Post like status retrieved', () => {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.hasLiked).to.be.a('boolean');",
+									"    pm.expect(response.totalLikes).to.be.a('number');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/likes/post/{{post_id}}/check",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"likes",
+								"post",
+								"{{post_id}}",
+								"check"
+							]
+						},
+						"description": "Check if current user has liked a post and get total like count"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "👥 Follow System",
+			"description": "Follow and unfollow users, check follow status and counts",
+			"item": [
+				{
+					"name": "Follow User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('User followed successfully', () => {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.success).to.be.true;",
+									"    pm.expect(response.followerCount).to.be.a('number');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/follow/{{artist_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"follow",
+								"{{artist_id}}"
+							]
+						},
+						"description": "Follow another user"
+					},
+					"response": []
+				},
+				{
+					"name": "Unfollow User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('User unfollowed successfully', () => {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/follow/{{artist_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"follow",
+								"{{artist_id}}"
+							]
+						},
+						"description": "Unfollow a user"
+					},
+					"response": []
+				},
+				{
+					"name": "Check Follow Status",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Follow status retrieved', () => {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.isFollowing).to.be.a('boolean');",
+									"    pm.expect(response.followerCount).to.be.a('number');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/follow/{{artist_id}}/check",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"follow",
+								"{{artist_id}}",
+								"check"
+							]
+						},
+						"description": "Check if current user is following another user and get follower count"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🔔 Notifications",
+			"description": "Notification management and real-time updates",
+			"item": [
+				{
+					"name": "Get User Notifications",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/notifications?page=0&size=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"notifications"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "20"
+								}
+							]
+						},
+						"description": "Get paginated list of user notifications"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Unread Notifications",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/notifications/unread",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"notifications",
+								"unread"
+							]
+						},
+						"description": "Get only unread notifications"
+					},
+					"response": []
+				},
+				{
+					"name": "Mark Notification as Read",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/notifications/{{notification_id}}/read",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"notifications",
+								"{{notification_id}}",
+								"read"
+							]
+						},
+						"description": "Mark a specific notification as read"
+					},
+					"response": []
+				},
+				{
+					"name": "Mark All Notifications as Read",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/notifications/mark-all-read",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"notifications",
+								"mark-all-read"
+							]
+						},
+						"description": "Mark all notifications as read for current user"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🧪 Testing Scenarios",
+			"description": "Complete user journey tests and integration scenarios",
+			"item": [
+				{
+					"name": "Complete User Journey",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/{{user_id}}/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"{{user_id}}",
+								"profile"
+							]
+						},
+						"description": "Test complete user journey: Register → Login → Update Profile → Apply for Artist → Upload Song → Create Post → Like Content → Follow Users"
+					},
+					"response": []
+				},
+				{
+					"name": "Performance Test - Load Songs",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.globals.set('test_start_time', new Date().getTime());"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseTime = pm.response.responseTime;",
+									"const startTime = pm.globals.get('test_start_time');",
+									"const endTime = new Date().getTime();",
+									"const totalTime = endTime - startTime;",
+									"",
+									"pm.test('Response time is acceptable', () => {",
+									"    pm.expect(responseTime).to.be.below(2000); // Less than 2 seconds",
+									"});",
+									"",
+									"pm.test('Songs loaded successfully', () => {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"});",
+									"",
+									"console.log(`Total request time: ${totalTime}ms`);",
+									"console.log(`Response time: ${responseTime}ms`);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/songs/public?page=0&size=50",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"songs",
+								"public"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "50"
+								}
+							]
+						},
+						"description": "Performance test to load larger dataset of songs"
+					},
+					"response": []
+				},
+				{
+					"name": "Error Handling - Invalid Endpoint",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Invalid endpoint returns 404', () => {",
+									"    pm.expect(pm.response.code).to.equal(404);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/invalid-endpoint-test",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"invalid-endpoint-test"
+							]
+						},
+						"description": "Test error handling for invalid endpoints"
+					},
+					"response": []
+				},
+				{
+					"name": "Error Handling - Unauthorized Access",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Unauthorized access returns 401', () => {",
+									"    pm.expect(pm.response.code).to.be.oneOf([401, 403]);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/{{user_id}}/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"{{user_id}}",
+								"profile"
+							]
+						},
+						"description": "Test unauthorized access without authentication token"
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
+

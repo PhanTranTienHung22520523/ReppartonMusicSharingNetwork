@@ -1,0 +1,7 @@
+com\DA2\eventservice\controller\EventController.class
+com\DA2\eventservice\config\RabbitConfig.class
+com\DA2\eventservice\config\RedisConfig.class
+com\DA2\eventservice\EventServiceApplication.class
+com\DA2\eventservice\service\EventPublisherService.class
+com\DA2\eventservice\listener\EventListener.class
+com\DA2\eventservice\config\KafkaConfig.class

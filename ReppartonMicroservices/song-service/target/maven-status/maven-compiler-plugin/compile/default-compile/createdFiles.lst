@@ -1,0 +1,7 @@
+com\DA2\songservice\controller\SongController.class
+com\DA2\songservice\service\SongService.class
+com\DA2\songservice\SongServiceApplication.class
+com\DA2\songservice\repository\SongRepository.class
+com\DA2\songservice\entity\Song$SongBuilder.class
+com\DA2\songservice\controller\HealthController.class
+com\DA2\songservice\entity\Song.class

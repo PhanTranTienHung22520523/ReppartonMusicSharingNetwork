@@ -1,0 +1,1367 @@
+{
+	"info": {
+		"_postman_id": "organized-repparton-api",
+		"name": "Repparton - Organized API Collection",
+		"description": "Well-organized API collection following REST best practices with 6 main categories: Authentication, Music, Social, Engagement, Communication, and Discovery",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{auth_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080/api",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "user_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "artist_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "song_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "post_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "playlist_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "story_id",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "🔐 Authentication & User Management",
+			"description": "User registration, login, profile management, and authentication",
+			"item": [
+				{
+					"name": "Authentication",
+					"item": [
+						{
+							"name": "Register User",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"    const response = pm.response.json();",
+											"    if (response.success && response.user) {",
+											"        pm.collectionVariables.set('user_id', response.user.id);",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"user_{{$timestamp}}\",\n  \"email\": \"user.{{$timestamp}}@example.com\",\n  \"password\": \"password123\",\n  \"confirmPassword\": \"password123\",\n  \"bio\": \"Music enthusiast and social media user\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/users/register",
+									"host": ["{{base_url}}"],
+									"path": ["users", "register"]
+								}
+							}
+						},
+						{
+							"name": "Login User",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"    const response = pm.response.json();",
+											"    if (response.success && response.token) {",
+											"        pm.collectionVariables.set('auth_token', response.token);",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"email\": \"user.{{$timestamp}}@example.com\",\n  \"password\": \"password123\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/users/login",
+									"host": ["{{base_url}}"],
+									"path": ["users", "login"]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "User Management",
+					"item": [
+						{
+							"name": "Get User Profile",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/users/{{user_id}}/profile",
+									"host": ["{{base_url}}"],
+									"path": ["users", "{{user_id}}", "profile"]
+								}
+							}
+						},
+						{
+							"name": "Update User Profile",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"updated_user\",\n  \"bio\": \"Updated bio with new information\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/users/{{user_id}}/profile",
+									"host": ["{{base_url}}"],
+									"path": ["users", "{{user_id}}", "profile"]
+								}
+							}
+						},
+						{
+							"name": "Search Users",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/users/search?query=test",
+									"host": ["{{base_url}}"],
+									"path": ["users", "search"],
+									"query": [
+										{
+											"key": "query",
+											"value": "test"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Apply to be Artist",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/users/{{user_id}}/apply-artist",
+									"host": ["{{base_url}}"],
+									"path": ["users", "{{user_id}}", "apply-artist"]
+								}
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🎵 Music & Content",
+			"description": "Songs, playlists, genres, and listening history management",
+			"item": [
+				{
+					"name": "Songs",
+					"item": [
+						{
+							"name": "Get All Public Songs",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/songs/public?page=0&size=20",
+									"host": ["{{base_url}}"],
+									"path": ["songs", "public"],
+									"query": [
+										{
+											"key": "page",
+											"value": "0"
+										},
+										{
+											"key": "size",
+											"value": "20"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Upload Song",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"    const response = pm.response.json();",
+											"    if (response.success && response.song) {",
+											"        pm.collectionVariables.set('song_id', response.song.id);",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "title",
+											"value": "My Song {{$timestamp}}",
+											"type": "text"
+										},
+										{
+											"key": "artistId",
+											"value": "{{user_id}}",
+											"type": "text"
+										},
+										{
+											"key": "audioFile",
+											"type": "file",
+											"src": []
+										},
+										{
+											"key": "genreIds",
+											"value": "pop,rock",
+											"type": "text"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{base_url}}/songs/upload",
+									"host": ["{{base_url}}"],
+									"path": ["songs", "upload"]
+								}
+							}
+						},
+						{
+							"name": "Get Song by ID",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/songs/{{song_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["songs", "{{song_id}}"]
+								}
+							}
+						},
+						{
+							"name": "Search Songs",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/songs/search?title=test&page=0&size=10",
+									"host": ["{{base_url}}"],
+									"path": ["songs", "search"],
+									"query": [
+										{
+											"key": "title",
+											"value": "test"
+										},
+										{
+											"key": "page",
+											"value": "0"
+										},
+										{
+											"key": "size",
+											"value": "10"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Get Trending Songs",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/songs/trending?limit=10",
+									"host": ["{{base_url}}"],
+									"path": ["songs", "trending"],
+									"query": [
+										{
+											"key": "limit",
+											"value": "10"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Play Song (Record View)",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/songs/{{song_id}}/play",
+									"host": ["{{base_url}}"],
+									"path": ["songs", "{{song_id}}", "play"]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "Playlists",
+					"item": [
+						{
+							"name": "Get User Playlists",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/playlists",
+									"host": ["{{base_url}}"],
+									"path": ["playlists"]
+								}
+							}
+						},
+						{
+							"name": "Create Playlist",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"    const response = pm.response.json();",
+											"    if (response.success && response.playlist) {",
+											"        pm.collectionVariables.set('playlist_id', response.playlist.id);",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"My Playlist {{$timestamp}}\",\n  \"description\": \"A collection of my favorite songs\",\n  \"isPublic\": true\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/playlists",
+									"host": ["{{base_url}}"],
+									"path": ["playlists"]
+								}
+							}
+						},
+						{
+							"name": "Add Song to Playlist",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"songId\": \"{{song_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/playlists/{{playlist_id}}/songs",
+									"host": ["{{base_url}}"],
+									"path": ["playlists", "{{playlist_id}}", "songs"]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "Genres",
+					"item": [
+						{
+							"name": "Get All Genres",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/genres",
+									"host": ["{{base_url}}"],
+									"path": ["genres"]
+								}
+							}
+						},
+						{
+							"name": "Get Songs by Genre",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/songs/genre/pop?page=0&size=10",
+									"host": ["{{base_url}}"],
+									"path": ["songs", "genre", "pop"],
+									"query": [
+										{
+											"key": "page",
+											"value": "0"
+										},
+										{
+											"key": "size",
+											"value": "10"
+										}
+									]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "Listen History",
+					"item": [
+						{
+							"name": "Get Listening History",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/listen-history?page=0&size=20",
+									"host": ["{{base_url}}"],
+									"path": ["listen-history"],
+									"query": [
+										{
+											"key": "page",
+											"value": "0"
+										},
+										{
+											"key": "size",
+											"value": "20"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Get Listening Stats",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/listen-history/stats",
+									"host": ["{{base_url}}"],
+									"path": ["listen-history", "stats"]
+								}
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "📱 Social Features",
+			"description": "Posts, stories, comments, and content sharing",
+			"item": [
+				{
+					"name": "Posts",
+					"item": [
+						{
+							"name": "Get All Posts",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/posts?page=0&size=20",
+									"host": ["{{base_url}}"],
+									"path": ["posts"],
+									"query": [
+										{
+											"key": "page",
+											"value": "0"
+										},
+										{
+											"key": "size",
+											"value": "20"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Create Post",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"    const response = pm.response.json();",
+											"    if (response.success && response.post) {",
+											"        pm.collectionVariables.set('post_id', response.post.id);",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "content",
+											"value": "Just shared an amazing song! 🎵 #music #sharing",
+											"type": "text"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{base_url}}/posts",
+									"host": ["{{base_url}}"],
+									"path": ["posts"]
+								}
+							}
+						},
+						{
+							"name": "Get User Feed",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/posts/feed?page=0&size=20",
+									"host": ["{{base_url}}"],
+									"path": ["posts", "feed"],
+									"query": [
+										{
+											"key": "page",
+											"value": "0"
+										},
+										{
+											"key": "size",
+											"value": "20"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Get Trending Posts",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/posts/trending?limit=10",
+									"host": ["{{base_url}}"],
+									"path": ["posts", "trending"],
+									"query": [
+										{
+											"key": "limit",
+											"value": "10"
+										}
+									]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "Stories",
+					"item": [
+						{
+							"name": "Get Active Stories",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/stories",
+									"host": ["{{base_url}}"],
+									"path": ["stories"]
+								}
+							}
+						},
+						{
+							"name": "Create Story",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"    const response = pm.response.json();",
+											"    if (response.success && response.story) {",
+											"        pm.collectionVariables.set('story_id', response.story.id);",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "content",
+											"value": "Working on new music! 🎤",
+											"type": "text"
+										},
+										{
+											"key": "mediaFile",
+											"type": "file",
+											"src": []
+										}
+									]
+								},
+								"url": {
+									"raw": "{{base_url}}/stories",
+									"host": ["{{base_url}}"],
+									"path": ["stories"]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "Comments",
+					"item": [
+						{
+							"name": "Get Post Comments",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/posts/{{post_id}}/comments",
+									"host": ["{{base_url}}"],
+									"path": ["posts", "{{post_id}}", "comments"]
+								}
+							}
+						},
+						{
+							"name": "Add Comment to Post",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"content\": \"Great post! Love this music 🎵\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/posts/{{post_id}}/comments",
+									"host": ["{{base_url}}"],
+									"path": ["posts", "{{post_id}}", "comments"]
+								}
+							}
+						},
+						{
+							"name": "Get Song Comments",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/songs/{{song_id}}/comments",
+									"host": ["{{base_url}}"],
+									"path": ["songs", "{{song_id}}", "comments"]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "Shares",
+					"item": [
+						{
+							"name": "Share Post",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/shares/post/{{post_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["shares", "post", "{{post_id}}"]
+								}
+							}
+						},
+						{
+							"name": "Share Song",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/shares/song/{{song_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["shares", "song", "{{song_id}}"]
+								}
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "💝 Engagement & Interactions",
+			"description": "Likes, follows, and social interactions",
+			"item": [
+				{
+					"name": "Likes",
+					"item": [
+						{
+							"name": "Like/Unlike Song",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/likes/song/{{song_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["likes", "song", "{{song_id}}"]
+								}
+							}
+						},
+						{
+							"name": "Like/Unlike Post",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/likes/post/{{post_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["likes", "post", "{{post_id}}"]
+								}
+							}
+						},
+						{
+							"name": "Check Song Like Status",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/likes/song/{{song_id}}/check",
+									"host": ["{{base_url}}"],
+									"path": ["likes", "song", "{{song_id}}", "check"]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "Follows",
+					"item": [
+						{
+							"name": "Follow User",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/follows/{{artist_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["follows", "{{artist_id}}"]
+								}
+							}
+						},
+						{
+							"name": "Unfollow User",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/follows/{{artist_id}}",
+									"host": ["{{base_url}}"],
+									"path": ["follows", "{{artist_id}}"]
+								}
+							}
+						},
+						{
+							"name": "Check Follow Status",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/follows/{{artist_id}}/check",
+									"host": ["{{base_url}}"],
+									"path": ["follows", "{{artist_id}}", "check"]
+								}
+							}
+						},
+						{
+							"name": "Get User Followers",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/follows/{{user_id}}/followers",
+									"host": ["{{base_url}}"],
+									"path": ["follows", "{{user_id}}", "followers"]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "Story Interactions",
+					"item": [
+						{
+							"name": "View Story",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/story-interactions/{{story_id}}/view",
+									"host": ["{{base_url}}"],
+									"path": ["story-interactions", "{{story_id}}", "view"]
+								}
+							}
+						},
+						{
+							"name": "Like Story",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/story-interactions/{{story_id}}/like",
+									"host": ["{{base_url}}"],
+									"path": ["story-interactions", "{{story_id}}", "like"]
+								}
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "💬 Communication",
+			"description": "Direct messaging and notifications",
+			"item": [
+				{
+					"name": "Messages",
+					"item": [
+						{
+							"name": "Get Conversations",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/messages/conversations",
+									"host": ["{{base_url}}"],
+									"path": ["messages", "conversations"]
+								}
+							}
+						},
+						{
+							"name": "Start New Conversation",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"participantId\": \"{{artist_id}}\",\n  \"message\": \"Hello! Love your music!\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/messages/conversations",
+									"host": ["{{base_url}}"],
+									"path": ["messages", "conversations"]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "Notifications",
+					"item": [
+						{
+							"name": "Get Notifications",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/notifications?page=0&size=20",
+									"host": ["{{base_url}}"],
+									"path": ["notifications"],
+									"query": [
+										{
+											"key": "page",
+											"value": "0"
+										},
+										{
+											"key": "size",
+											"value": "20"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Get Unread Notifications",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/notifications/unread",
+									"host": ["{{base_url}}"],
+									"path": ["notifications", "unread"]
+								}
+							}
+						},
+						{
+							"name": "Mark All as Read",
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/notifications/mark-all-read",
+									"host": ["{{base_url}}"],
+									"path": ["notifications", "mark-all-read"]
+								}
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🔍 Discovery & Analytics",
+			"description": "Search functionality and analytics",
+			"item": [
+				{
+					"name": "Search",
+					"item": [
+						{
+							"name": "Global Search",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/search/all?query=music&limit=20",
+									"host": ["{{base_url}}"],
+									"path": ["search", "all"],
+									"query": [
+										{
+											"key": "query",
+											"value": "music"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Search Users",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/search/users?query=artist&page=0&size=10",
+									"host": ["{{base_url}}"],
+									"path": ["search", "users"],
+									"query": [
+										{
+											"key": "query",
+											"value": "artist"
+										},
+										{
+											"key": "page",
+											"value": "0"
+										},
+										{
+											"key": "size",
+											"value": "10"
+										}
+									]
+								}
+							}
+						},
+						{
+							"name": "Search Songs",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/search/songs?query=rock&page=0&size=10",
+									"host": ["{{base_url}}"],
+									"path": ["search", "songs"],
+									"query": [
+										{
+											"key": "query",
+											"value": "rock"
+										},
+										{
+											"key": "page",
+											"value": "0"
+										},
+										{
+											"key": "size",
+											"value": "10"
+										}
+									]
+								}
+							}
+						}
+					]
+				},
+				{
+					"name": "Search History",
+					"item": [
+						{
+							"name": "Get Search History",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/search-history",
+									"host": ["{{base_url}}"],
+									"path": ["search-history"]
+								}
+							}
+						},
+						{
+							"name": "Clear Search History",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/search-history/clear",
+									"host": ["{{base_url}}"],
+									"path": ["search-history", "clear"]
+								}
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🎯 Quick Test with Real Data",
+			"description": "Ready-to-use tests with pre-loaded data",
+			"item": [
+				{
+					"name": "Login as Sarah (Music Fan)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.success && response.token) {",
+									"        pm.collectionVariables.set('auth_token', response.token);",
+									"        pm.test('Login successful', () => {",
+									"            pm.expect(response.success).to.be.true;",
+									"        });",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"sarah@example.com\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/login",
+							"host": ["{{base_url}}"],
+							"path": ["users", "login"]
+						},
+						"description": "Login as Sarah, a music enthusiast who follows all the artists"
+					}
+				},
+				{
+					"name": "Get Taylor Swift's Profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const profile = pm.response.json();",
+									"    pm.collectionVariables.set('taylor_id', profile.user.id);",
+									"    pm.test('Taylor Swift profile loaded', () => {",
+									"        pm.expect(profile.user.username).to.include('taylor');",
+									"        pm.expect(profile.songs.length).to.be.above(0);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/search?query=taylor_swift_official",
+							"host": ["{{base_url}}"],
+							"path": ["users", "search"],
+							"query": [
+								{
+									"key": "query",
+									"value": "taylor_swift_official"
+								}
+							]
+						},
+						"description": "Find Taylor Swift's profile from the pre-loaded data"
+					}
+				},
+				{
+					"name": "Get All Pre-loaded Songs",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Songs loaded successfully', () => {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"    const songs = pm.response.json();",
+									"    pm.expect(songs.content.length).to.be.above(0);",
+									"    console.log(`Found ${songs.content.length} songs`);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/songs/public?page=0&size=20",
+							"host": ["{{base_url}}"],
+							"path": ["songs", "public"],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "20"
+								}
+							]
+						},
+						"description": "Get all pre-loaded songs including Taylor Swift, Ed Sheeran, Billie Eilish tracks"
+					}
+				},
+				{
+					"name": "Get Trending Songs (Real Data)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Trending songs with real view counts', () => {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"    const songs = pm.response.json();",
+									"    pm.expect(songs.length).to.be.above(0);",
+									"    // Check that songs have realistic view counts",
+									"    songs.forEach(song => {",
+									"        pm.expect(song.views).to.be.above(100000);",
+									"        console.log(`${song.title} - ${song.views} views`);",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/songs/trending?limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["songs", "trending"],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Get trending songs with real view counts (1M-4M views)"
+					}
+				},
+				{
+					"name": "Get Social Posts with Real Content",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Social posts with realistic content', () => {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"    const posts = pm.response.json();",
+									"    pm.expect(posts.content.length).to.be.above(0);",
+									"    posts.content.forEach(post => {",
+									"        console.log(`${post.username}: ${post.content.substring(0, 50)}...`);",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/posts?page=0&size=20",
+							"host": ["{{base_url}}"],
+							"path": ["posts"],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "20"
+								}
+							]
+						},
+						"description": "Get social posts from Taylor Swift, Ed Sheeran and fans with authentic content"
+					}
+				},
+				{
+					"name": "Search for 'Love Story'",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Found Love Story by Taylor Swift', () => {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"    const songs = pm.response.json();",
+									"    const loveStory = songs.content.find(song => ",
+									"        song.title.toLowerCase().includes('love story'));",
+									"    pm.expect(loveStory).to.not.be.undefined;",
+									"    console.log(`Found: ${loveStory.title} with ${loveStory.views} views`);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/songs/search?title=Love Story&page=0&size=10",
+							"host": ["{{base_url}}"],
+							"path": ["songs", "search"],
+							"query": [
+								{
+									"key": "title",
+									"value": "Love Story"
+								},
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Search for Taylor Swift's Love Story (2023 Version)"
+					}
+				}
+			]
+		}
+	]
+}

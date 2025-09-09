@@ -1,0 +1,3 @@
+com\DA2\gateway\ApiGatewayApplication.class
+com\DA2\gateway\filter\JwtAuthenticationFilter$Config.class
+com\DA2\gateway\filter\JwtAuthenticationFilter.class

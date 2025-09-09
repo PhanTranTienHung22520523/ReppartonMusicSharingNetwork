@@ -1,0 +1,7 @@
+com\DA2\shared\events\SongPlayedEvent.class
+com\DA2\shared\dto\UserDto.class
+com\DA2\shared\events\BaseEvent.class
+com\DA2\shared\events\UserRegisteredEvent.class
+com\DA2\shared\dto\ApiResponse.class
+com\DA2\shared\events\NotificationEvent.class
+com\DA2\shared\dto\SongDto.class

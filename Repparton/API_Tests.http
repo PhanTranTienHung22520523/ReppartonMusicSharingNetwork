@@ -1,0 +1,312 @@
+###
+### Repparton API Testing - Facebook + SoundCloud Platform
+### Complete REST Client Test File
+###
+
+@baseUrl = http://localhost:8080/api
+@contentType = application/json
+
+### Variables (Update these after getting responses)
+@authToken = your-jwt-token-here
+@userId = user-id-here
+@songId = song-id-here
+@postId = post-id-here
+@artistId = artist-id-here
+
+###############################################
+### 🔐 AUTHENTICATION TESTS
+###############################################
+
+### 1. Register New User
+POST {{baseUrl}}/users/register
+Content-Type: {{contentType}}
+
+{
+  "username": "john_doe_test",
+  "email": "john.test@example.com",
+  "password": "password123",
+  "confirmPassword": "password123",
+  "bio": "Test user for API testing - Music lover and content creator",
+  "avatarUrl": "",
+  "coverUrl": ""
+}
+
+### 2. Register Artist User
+POST {{baseUrl}}/users/register
+Content-Type: {{contentType}}
+
+{
+  "username": "artist_test",
+  "email": "artist.test@example.com",
+  "password": "artist123",
+  "confirmPassword": "artist123",
+  "bio": "Test artist account for music uploads",
+  "avatarUrl": "",
+  "coverUrl": ""
+}
+
+### 3. Login User (Save the token for other requests)
+POST {{baseUrl}}/users/login
+Content-Type: {{contentType}}
+
+{
+  "email": "john.test@example.com",
+  "password": "password123"
+}
+
+### 4. Login Artist
+POST {{baseUrl}}/users/login
+Content-Type: {{contentType}}
+
+{
+  "email": "artist.test@example.com",
+  "password": "artist123"
+}
+
+###############################################
+### 👤 USER MANAGEMENT TESTS
+###############################################
+
+### 5. Get User Profile
+GET {{baseUrl}}/users/{{userId}}/profile
+Authorization: Bearer {{authToken}}
+
+### 6. Get User by ID
+GET {{baseUrl}}/users/{{userId}}
+Authorization: Bearer {{authToken}}
+
+### 7. Update User Profile
+PUT {{baseUrl}}/users/{{userId}}/profile
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+{
+  "username": "john_updated_test",
+  "bio": "Updated bio - Professional musician and content creator",
+  "avatarUrl": "",
+  "coverUrl": ""
+}
+
+### 8. Apply to be Artist
+POST {{baseUrl}}/users/{{userId}}/apply-artist
+Authorization: Bearer {{authToken}}
+
+### 9. Search Users
+GET {{baseUrl}}/users/search?query=john
+Authorization: Bearer {{authToken}}
+
+### 10. Get Pending Artist Requests (Admin only)
+GET {{baseUrl}}/users/pending-artists
+Authorization: Bearer {{authToken}}
+
+### 11. Approve Artist Request (Admin only)
+POST {{baseUrl}}/users/{{userId}}/approve-artist
+Authorization: Bearer {{authToken}}
+
+###############################################
+### 🎵 MUSIC STREAMING TESTS
+###############################################
+
+### 12. Upload Song (Form Data - Use Postman or similar tool for file upload)
+# POST {{baseUrl}}/songs/upload
+# Content-Type: multipart/form-data
+# Authorization: Bearer {{authToken}}
+#
+# Form data:
+# title: "Test Song Upload"
+# artistId: {{userId}}
+# audioFile: [Select MP3 file]
+# coverFile: [Select image file]
+# isPrivate: false
+# genreIds: "rock,pop"
+
+### 13. Get All Public Songs
+GET {{baseUrl}}/songs/public?page=0&size=20
+Authorization: Bearer {{authToken}}
+
+### 14. Get Song by ID
+GET {{baseUrl}}/songs/{{songId}}
+Authorization: Bearer {{authToken}}
+
+### 15. Get Songs by Artist
+GET {{baseUrl}}/songs/artist/{{artistId}}
+Authorization: Bearer {{authToken}}
+
+### 16. Search Songs
+GET {{baseUrl}}/songs/search?title=test&page=0&size=10
+Authorization: Bearer {{authToken}}
+
+### 17. Get Songs by Genre
+GET {{baseUrl}}/songs/genre/rock?page=0&size=10
+Authorization: Bearer {{authToken}}
+
+### 18. Get Trending Songs
+GET {{baseUrl}}/songs/trending?limit=10
+Authorization: Bearer {{authToken}}
+
+### 19. Get Recommended Songs
+GET {{baseUrl}}/songs/recommendations?limit=10
+Authorization: Bearer {{authToken}}
+
+### 20. Play Song (Record View)
+POST {{baseUrl}}/songs/{{songId}}/play
+Authorization: Bearer {{authToken}}
+
+### 21. Get Pending Songs (Admin only)
+GET {{baseUrl}}/songs/pending
+Authorization: Bearer {{authToken}}
+
+### 22. Approve Song (Admin only)
+POST {{baseUrl}}/songs/{{songId}}/approve
+Authorization: Bearer {{authToken}}
+
+### 23. Reject Song (Admin only)
+POST {{baseUrl}}/songs/{{songId}}/reject
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+{
+  "reason": "Audio quality does not meet our standards"
+}
+
+### 24. Delete Song
+DELETE {{baseUrl}}/songs/{{songId}}
+Authorization: Bearer {{authToken}}
+
+###############################################
+### 📱 SOCIAL MEDIA POSTS TESTS
+###############################################
+
+### 25. Create Text Post
+POST {{baseUrl}}/posts
+Content-Type: multipart/form-data
+Authorization: Bearer {{authToken}}
+
+# Form data:
+# content: "Just uploaded a new song! Check it out 🎵 #newmusic #test"
+
+### 26. Create Post with Media (Use Postman for file upload)
+# POST {{baseUrl}}/posts
+# Content-Type: multipart/form-data
+# Authorization: Bearer {{authToken}}
+#
+# Form data:
+# content: "Sharing some behind-the-scenes from my studio! 🎤"
+# mediaFile: [Select image/video file]
+
+### 27. Get All Posts
+GET {{baseUrl}}/posts?page=0&size=20
+Authorization: Bearer {{authToken}}
+
+### 28. Get User Feed (Personalized)
+GET {{baseUrl}}/posts/feed?page=0&size=20
+Authorization: Bearer {{authToken}}
+
+### 29. Get Posts by User
+GET {{baseUrl}}/posts/user/{{userId}}?page=0&size=10
+Authorization: Bearer {{authToken}}
+
+### 30. Get Post by ID
+GET {{baseUrl}}/posts/{{postId}}
+Authorization: Bearer {{authToken}}
+
+### 31. Search Posts
+GET {{baseUrl}}/posts/search?query=music&page=0&size=10
+Authorization: Bearer {{authToken}}
+
+### 32. Get Trending Posts
+GET {{baseUrl}}/posts/trending?limit=10
+Authorization: Bearer {{authToken}}
+
+### 33. Update Post
+PUT {{baseUrl}}/posts/{{postId}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{authToken}}
+
+{
+  "content": "Updated post content with new information! 🎵✨"
+}
+
+### 34. Delete Post
+DELETE {{baseUrl}}/posts/{{postId}}
+Authorization: Bearer {{authToken}}
+
+###############################################
+### ❤️ LIKE SYSTEM TESTS
+###############################################
+
+### 35. Like Song
+POST {{baseUrl}}/likes/song/{{songId}}
+Authorization: Bearer {{authToken}}
+
+### 36. Unlike Song (Run same request again)
+POST {{baseUrl}}/likes/song/{{songId}}
+Authorization: Bearer {{authToken}}
+
+### 37. Check Song Like Status
+GET {{baseUrl}}/likes/song/{{songId}}/check
+Authorization: Bearer {{authToken}}
+
+### 38. Like Post
+POST {{baseUrl}}/likes/post/{{postId}}
+Authorization: Bearer {{authToken}}
+
+### 39. Unlike Post (Run same request again)
+POST {{baseUrl}}/likes/post/{{postId}}
+Authorization: Bearer {{authToken}}
+
+### 40. Check Post Like Status
+GET {{baseUrl}}/likes/post/{{postId}}/check
+Authorization: Bearer {{authToken}}
+
+###############################################
+### 👥 FOLLOW SYSTEM TESTS
+###############################################
+
+### 41. Follow User
+POST {{baseUrl}}/follow/{{artistId}}
+Authorization: Bearer {{authToken}}
+
+### 42. Unfollow User
+DELETE {{baseUrl}}/follow/{{artistId}}
+Authorization: Bearer {{authToken}}
+
+### 43. Check Follow Status
+GET {{baseUrl}}/follow/{{artistId}}/check
+Authorization: Bearer {{authToken}}
+
+###############################################
+### 🔔 NOTIFICATION TESTS (if implemented)
+###############################################
+
+### 44. Get User Notifications
+GET {{baseUrl}}/notifications?page=0&size=20
+Authorization: Bearer {{authToken}}
+
+### 45. Get Unread Notifications
+GET {{baseUrl}}/notifications/unread
+Authorization: Bearer {{authToken}}
+
+### 46. Mark Notification as Read
+PUT {{baseUrl}}/notifications/{{notificationId}}/read
+Authorization: Bearer {{authToken}}
+
+### 47. Mark All Notifications as Read
+PUT {{baseUrl}}/notifications/mark-all-read
+Authorization: Bearer {{authToken}}
+
+###############################################
+### 🎯 INTEGRATION TESTS
+###############################################
+
+### 48. Complete User Journey Test
+# 1. Register → 2. Login → 3. Update Profile → 4. Apply for Artist →
+# 5. Upload Song → 6. Create Post → 7. Like Content → 8. Follow Users
+
+### 49. Artist Workflow Test
+# 1. Register Artist → 2. Upload Song → 3. Wait for Approval →
+# 4. Create Posts → 5. Get Analytics
+
+### 50. Social Interaction Test
+# 1. Create Posts → 2. Like Posts → 3. Follow Users →
+# 4. Check Feed → 5. Get Recommendations
