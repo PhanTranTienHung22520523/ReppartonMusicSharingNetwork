@@ -32,6 +32,15 @@
         <module>comment-service</module>
         <module>notification-service</module>
         <module>event-service</module>
+        <module>story-service</module>
+        <module>message-service</module>
+        <module>analytics-service</module>
+        <module>genre-service</module>
+        <module>post-service</module>
+        <module>report-service</module>
+        <module>search-service</module>
+        <module>recommendation-service</module>
+        <module>file-storage-service</module>
         <module>shared-common</module>
     </modules>
 

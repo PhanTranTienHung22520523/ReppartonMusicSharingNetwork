@@ -4,14 +4,25 @@
 This project converts the monolithic Repparton application into a microservices architecture without Docker containerization.
 
 ## Architecture
+
+### Core Services
 - **API Gateway Service** (Port 8080) - Entry point and routing
 - **Discovery Service** (Port 8761) - Service registration with Eureka
+
+### Business Services
 - **User Service** (Port 8081) - User management and authentication
 - **Song Service** (Port 8082) - Song management and file uploads
 - **Social Service** (Port 8083) - Social interactions (follows, likes, shares)
 - **Playlist Service** (Port 8084) - Playlist management
 - **Comment Service** (Port 8085) - Comment system
 - **Notification Service** (Port 8086) - Real-time notifications
+- **Event Service** (Port 8090) - Event processing and messaging
+
+### New Services (Recently Added)
+- **Story Service** (Port 8087) - Instagram-like stories feature ✅
+- **Message Service** (Port 8088) - Direct messaging between users ✅
+- **Analytics Service** (Port 8089) - Listen and search history tracking ✅
+- **Genre Service** (Port 8090) - Music genre management ✅
 
 ## Technologies
 - Spring Boot 3.5.3

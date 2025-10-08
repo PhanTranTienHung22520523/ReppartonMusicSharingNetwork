@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: story-service
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/storydb
+  cache:
+    type: simple
+
+server:
+  port: 8087
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    prefer-ip-address: true
+
+logging:
+  level:
+    com.DA2.storyservice: DEBUG
+    org.springframework.cloud: DEBUG
