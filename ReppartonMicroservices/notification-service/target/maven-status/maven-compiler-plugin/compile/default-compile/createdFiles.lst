@@ -1,1 +1,5 @@
+com\DA2\notificationservice\controller\NotificationController.class
+com\DA2\notificationservice\entity\Notification.class
 com\DA2\notificationservice\NotificationServiceApplication.class
+com\DA2\notificationservice\repository\NotificationRepository.class
+com\DA2\notificationservice\service\NotificationService.class

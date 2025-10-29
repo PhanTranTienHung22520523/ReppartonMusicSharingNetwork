@@ -150,23 +150,23 @@ public class FileStorageController {
     }
 
     // Generate transformation URL
-    @GetMapping("/transform")
-    public ResponseEntity<?> generateTransformationUrl(
-            @RequestParam String publicId,
-            @RequestParam(defaultValue = "300") int width,
-            @RequestParam(defaultValue = "300") int height,
-            @RequestParam(defaultValue = "fill") String crop) {
-        try {
-            String url = fileStorageService.generateTransformationUrl(publicId, width, height, crop);
-            return ResponseEntity.ok(Map.of(
-                "success", true,
-                "transformedUrl", url
-            ));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                "success", false,
-                "message", e.getMessage()
-            ));
-        }
-    }
+    // @GetMapping("/transform")
+    // public ResponseEntity<?> generateTransformationUrl(
+    //         @RequestParam String publicId,
+    //         @RequestParam(defaultValue = "300") int width,
+    //         @RequestParam(defaultValue = "300") int height,
+    //         @RequestParam(defaultValue = "fill") String crop) {
+    //     try {
+    //         String url = fileStorageService.generateTransformationUrl(publicId, width, height, crop);
+    //         return ResponseEntity.ok(Map.of(
+    //             "success", true,
+    //             "transformedUrl", url
+    //         ));
+    //     } catch (Exception e) {
+    //         return ResponseEntity.badRequest().body(Map.of(
+    //             "success", false,
+    //             "message", e.getMessage()
+    //         ));
+    //     }
+    // }
 }

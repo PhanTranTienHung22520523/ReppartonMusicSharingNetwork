@@ -1,0 +1,763 @@
+{
+	"info": {
+		"_postman_id": "pg-test-collection-2025",
+		"name": "Repparton PostgreSQL API Tests",
+		"description": "Complete API testing suite for PostgreSQL-backed microservices",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Authentication",
+			"item": [
+				{
+					"name": "Register User (PostgreSQL)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"User ID exists\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data.id).to.exist;",
+									"    pm.environment.set(\"user_id\", jsonData.data.id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"testuser_pg\",\n  \"email\": \"test_pg@example.com\",\n  \"password\": \"password123\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"PostgreSQL\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register"
+							]
+						},
+						"description": "Register new user - Data saved in PostgreSQL users table"
+					},
+					"response": []
+				},
+				{
+					"name": "Login (Get JWT Token)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"JWT token exists\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data.token).to.exist;",
+									"    pm.environment.set(\"jwt_token\", jsonData.data.token);",
+									"    pm.environment.set(\"user_id\", jsonData.data.userId);",
+									"    console.log(\"JWT Token saved:\", jsonData.data.token);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"usernameOrEmail\": \"testuser_pg\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Login and get JWT token for authenticated requests"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User Profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"User data from PostgreSQL\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data.username).to.eql(\"testuser_pg\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/users/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me"
+							]
+						},
+						"description": "Get current authenticated user from PostgreSQL"
+					},
+					"response": []
+				}
+			],
+			"description": "Authentication endpoints - PostgreSQL backed"
+		},
+		{
+			"name": "2. Song Management (PostgreSQL)",
+			"item": [
+				{
+					"name": "Create Song",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Song created in PostgreSQL\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data.id).to.exist;",
+									"    pm.environment.set(\"song_id\", jsonData.data.id);",
+									"    console.log(\"Song ID:\", jsonData.data.id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-User-Id",
+								"value": "{{user_id}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"PostgreSQL Test Song\",\n  \"artistName\": \"Test Artist PG\",\n  \"album\": \"Test Album\",\n  \"genre\": \"Pop\",\n  \"description\": \"Testing PostgreSQL song storage\",\n  \"audioUrl\": \"https://example.com/song.mp3\",\n  \"coverImageUrl\": \"https://example.com/cover.jpg\",\n  \"durationSeconds\": 180,\n  \"isPublic\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/songs",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"songs"
+							]
+						},
+						"description": "Create song - Saved in PostgreSQL songs table"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Songs (PostgreSQL)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Songs retrieved from PostgreSQL\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.data).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/songs",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"songs"
+							]
+						},
+						"description": "Get all public songs from PostgreSQL"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Song by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/songs/{{song_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"songs",
+								"{{song_id}}"
+							]
+						},
+						"description": "Get specific song from PostgreSQL by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Search Songs (PostgreSQL)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/songs/search?query=PostgreSQL",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"songs",
+								"search"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "PostgreSQL"
+								}
+							]
+						},
+						"description": "Search songs in PostgreSQL database"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Song",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-User-Id",
+								"value": "{{user_id}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Updated PostgreSQL Song\",\n  \"description\": \"Updated description in PostgreSQL\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/songs/{{song_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"songs",
+								"{{song_id}}"
+							]
+						},
+						"description": "Update song in PostgreSQL"
+					},
+					"response": []
+				}
+			],
+			"description": "Song management with PostgreSQL storage"
+		},
+		{
+			"name": "3. Playlist Management (PostgreSQL)",
+			"item": [
+				{
+					"name": "Create Playlist",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Playlist created\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"playlist_id\", jsonData.playlist.id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"My PostgreSQL Playlist\",\n  \"description\": \"Testing playlist in PostgreSQL\",\n  \"userId\": \"{{user_id}}\",\n  \"isPublic\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/playlists",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"playlists"
+							]
+						},
+						"description": "Create playlist in PostgreSQL"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Playlists",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/playlists/user/{{user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"playlists",
+								"user",
+								"{{user_id}}"
+							]
+						},
+						"description": "Get user's playlists from PostgreSQL"
+					},
+					"response": []
+				},
+				{
+					"name": "Add Song to Playlist",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/playlists/{{playlist_id}}/songs/{{song_id}}?userId={{user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"playlists",
+								"{{playlist_id}}",
+								"songs",
+								"{{song_id}}"
+							],
+							"query": [
+								{
+									"key": "userId",
+									"value": "{{user_id}}"
+								}
+							]
+						},
+						"description": "Add song to playlist - Updates playlist_songs table in PostgreSQL"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Playlist Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/playlists/{{playlist_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"playlists",
+								"{{playlist_id}}"
+							]
+						},
+						"description": "Get playlist from PostgreSQL with song list"
+					},
+					"response": []
+				}
+			],
+			"description": "Playlist management with PostgreSQL"
+		},
+		{
+			"name": "4. Social Features (PostgreSQL)",
+			"item": [
+				{
+					"name": "Follow User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/social/follow/{{target_user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"social",
+								"follow",
+								"{{target_user_id}}"
+							]
+						},
+						"description": "Follow user - Stored in PostgreSQL follows table"
+					},
+					"response": []
+				},
+				{
+					"name": "Like Song",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/social/like/song/{{song_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"social",
+								"like",
+								"song",
+								"{{song_id}}"
+							]
+						},
+						"description": "Like song - Stored in PostgreSQL likes table"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Followers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/social/followers/{{user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"social",
+								"followers",
+								"{{user_id}}"
+							]
+						},
+						"description": "Get followers from PostgreSQL"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Following",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/social/following/{{user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"social",
+								"following",
+								"{{user_id}}"
+							]
+						},
+						"description": "Get following list from PostgreSQL"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Song Likes",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/social/likes/song/{{song_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"social",
+								"likes",
+								"song",
+								"{{song_id}}"
+							]
+						},
+						"description": "Get song likes from PostgreSQL"
+					},
+					"response": []
+				}
+			],
+			"description": "Social features with PostgreSQL storage"
+		},
+		{
+			"name": "5. PostgreSQL Verification",
+			"item": [
+				{
+					"name": "Health Check - User Service",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8081/actuator/health",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8081",
+							"path": [
+								"actuator",
+								"health"
+							]
+						},
+						"description": "Check if User Service is connected to PostgreSQL"
+					},
+					"response": []
+				},
+				{
+					"name": "Health Check - Song Service",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8082/actuator/health",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"actuator",
+								"health"
+							]
+						},
+						"description": "Check if Song Service is connected to PostgreSQL"
+					},
+					"response": []
+				},
+				{
+					"name": "Health Check - Playlist Service",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8084/actuator/health",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8084",
+							"path": [
+								"actuator",
+								"health"
+							]
+						},
+						"description": "Check if Playlist Service is connected to PostgreSQL"
+					},
+					"response": []
+				}
+			],
+			"description": "Verify PostgreSQL connectivity"
+		},
+		{
+			"name": "6. Performance Tests",
+			"item": [
+				{
+					"name": "Bulk Create Songs (PostgreSQL)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Create 10 songs in loop",
+									"for(let i = 0; i < 10; i++) {",
+									"    pm.sendRequest({",
+									"        url: pm.environment.get(\"base_url\") + \"/api/songs\",",
+									"        method: 'POST',",
+									"        header: {",
+									"            'Content-Type': 'application/json',",
+									"            'Authorization': 'Bearer ' + pm.environment.get(\"jwt_token\"),",
+									"            'X-User-Id': pm.environment.get(\"user_id\")",
+									"        },",
+									"        body: {",
+									"            mode: 'raw',",
+									"            raw: JSON.stringify({",
+									"                title: \"PG Test Song \" + i,",
+									"                artistName: \"Test Artist\",",
+									"                genre: \"Pop\",",
+									"                audioUrl: \"https://example.com/song\" + i + \".mp3\",",
+									"                isPublic: true",
+									"            })",
+									"        }",
+									"    }, function(err, res) {",
+									"        console.log(\"Song \" + i + \" created\");",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/songs",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"songs"
+							]
+						},
+						"description": "Test PostgreSQL bulk insert performance"
+					},
+					"response": []
+				}
+			],
+			"description": "Performance testing for PostgreSQL"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global pre-request script",
+					"console.log(\"Testing PostgreSQL backend\");"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global test script",
+					"pm.test(\"Response time < 2s\", function () {",
+					"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+					"});"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "jwt_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "user_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "song_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "playlist_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "target_user_id",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

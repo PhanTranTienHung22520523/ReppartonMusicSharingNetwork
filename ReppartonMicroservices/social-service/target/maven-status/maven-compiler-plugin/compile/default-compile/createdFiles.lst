@@ -1,1 +1,9 @@
+com\DA2\socialservice\repository\FollowRepository.class
+com\DA2\socialservice\entity\Follow.class
+com\DA2\socialservice\repository\LikeRepository.class
+com\DA2\socialservice\controller\SocialController.class
+com\DA2\socialservice\entity\Share.class
+com\DA2\socialservice\repository\ShareRepository.class
+com\DA2\socialservice\service\SocialService.class
 com\DA2\socialservice\SocialServiceApplication.class
+com\DA2\socialservice\entity\Like.class

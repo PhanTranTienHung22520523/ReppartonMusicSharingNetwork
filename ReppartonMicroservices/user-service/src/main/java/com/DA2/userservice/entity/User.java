@@ -38,6 +38,9 @@ public class User {
     private int followingCount = 0;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    
+    // Artist verification
+    private ArtistVerification artistVerification;
 
     public User(String username, String email, String passwordHash) {
         this.username = username;
@@ -73,4 +76,23 @@ public class User {
             this.fullName = username;
         }
     }
+    
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ArtistVerification {
+        private String status; // "pending", "approved", "rejected"
+        private String submittedDocumentUrl; // ID, certificate, etc.
+        private String artistName;
+        private String genre;
+        private String socialMediaLinks; // JSON string
+        private Integer verifiedSongsCount;
+        private Double aiConfidenceScore; // 0.0 - 1.0
+        private String rejectionReason;
+        private LocalDateTime submittedAt;
+        private LocalDateTime reviewedAt;
+        private String reviewedBy; // Admin ID
+    }
 }
+

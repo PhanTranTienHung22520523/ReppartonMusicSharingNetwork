@@ -5,6 +5,8 @@ C:\Users\phant\Downloads\DA2\ReppartonMicroservices\user-service\src\main\java\c
 C:\Users\phant\Downloads\DA2\ReppartonMicroservices\user-service\src\main\java\com\DA2\userservice\dto\RegisterRequest.java
 C:\Users\phant\Downloads\DA2\ReppartonMicroservices\user-service\src\main\java\com\DA2\userservice\repository\UserRepository.java
 C:\Users\phant\Downloads\DA2\ReppartonMicroservices\user-service\src\main\java\com\DA2\userservice\UserServiceApplication.java
+C:\Users\phant\Downloads\DA2\ReppartonMicroservices\user-service\src\main\java\com\DA2\userservice\dto\AuthDto.java
 C:\Users\phant\Downloads\DA2\ReppartonMicroservices\user-service\src\main\java\com\DA2\userservice\entity\User.java
+C:\Users\phant\Downloads\DA2\ReppartonMicroservices\user-service\src\main\java\com\DA2\userservice\service\ArtistVerificationAIService.java
 C:\Users\phant\Downloads\DA2\ReppartonMicroservices\user-service\src\main\java\com\DA2\userservice\dto\AuthResponse.java
 C:\Users\phant\Downloads\DA2\ReppartonMicroservices\user-service\src\main\java\com\DA2\userservice\controller\AuthController.java

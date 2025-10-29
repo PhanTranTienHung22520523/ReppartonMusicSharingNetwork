@@ -20,6 +20,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final ArtistVerificationAIService verificationAIService;
 
     public Map<String, Object> login(LoginRequest request) {
         User user = userRepository.findByUsername(request.getUsernameOrEmail())
@@ -97,4 +98,113 @@ public class AuthService {
         userResponse.put("role", user.getRole());
         return userResponse;
     }
+    
+    // ========== ARTIST VERIFICATION ==========
+    
+    public User applyForArtistVerification(String userId, String artistName, String documentUrl, 
+                                          String socialMediaLinks, Integer verifiedSongsCount) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        if ("ARTIST".equals(user.getRole())) {
+            throw new RuntimeException("User is already an artist");
+        }
+        
+        if (user.getArtistVerification() != null && 
+            "pending".equals(user.getArtistVerification().getStatus())) {
+            throw new RuntimeException("Artist verification already pending");
+        }
+        
+        // Use AI to verify artist application
+        User.ArtistVerification verification = verificationAIService.verifyArtistApplication(
+            artistName, documentUrl, socialMediaLinks, verifiedSongsCount
+        );
+        
+        user.setArtistVerification(verification);
+        user.setArtistPending("pending".equals(verification.getStatus()));
+        
+        // Auto-approve if AI confidence is high
+        if ("approved".equals(verification.getStatus())) {
+            user.setRole("ARTIST");
+            user.setVerified(true);
+            user.setArtistPending(false);
+        }
+        
+        user.setUpdatedAt(LocalDateTime.now());
+        return userRepository.save(user);
+    }
+    
+    public User resubmitArtistVerification(String userId, String newDocumentUrl) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        if (user.getArtistVerification() == null) {
+            throw new RuntimeException("No previous artist verification found");
+        }
+        
+        if ("approved".equals(user.getArtistVerification().getStatus())) {
+            throw new RuntimeException("Artist verification already approved");
+        }
+        
+        // Re-evaluate using AI
+        User.ArtistVerification updatedVerification = verificationAIService.reevaluateVerification(
+            user.getArtistVerification(), newDocumentUrl
+        );
+        
+        user.setArtistVerification(updatedVerification);
+        user.setArtistPending("pending".equals(updatedVerification.getStatus()));
+        
+        // Auto-approve if AI confidence improved
+        if ("approved".equals(updatedVerification.getStatus())) {
+            user.setRole("ARTIST");
+            user.setVerified(true);
+            user.setArtistPending(false);
+        }
+        
+        user.setUpdatedAt(LocalDateTime.now());
+        return userRepository.save(user);
+    }
+    
+    public User manualApproveArtist(String userId, String adminId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        if (user.getArtistVerification() == null) {
+            throw new RuntimeException("No artist verification found");
+        }
+        
+        User.ArtistVerification verification = user.getArtistVerification();
+        verification.setStatus("approved");
+        verification.setReviewedAt(LocalDateTime.now());
+        verification.setReviewedBy(adminId);
+        verification.setRejectionReason(null);
+        
+        user.setRole("ARTIST");
+        user.setVerified(true);
+        user.setArtistPending(false);
+        user.setUpdatedAt(LocalDateTime.now());
+        
+        return userRepository.save(user);
+    }
+    
+    public User manualRejectArtist(String userId, String adminId, String reason) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        if (user.getArtistVerification() == null) {
+            throw new RuntimeException("No artist verification found");
+        }
+        
+        User.ArtistVerification verification = user.getArtistVerification();
+        verification.setStatus("rejected");
+        verification.setReviewedAt(LocalDateTime.now());
+        verification.setReviewedBy(adminId);
+        verification.setRejectionReason(reason);
+        
+        user.setArtistPending(false);
+        user.setUpdatedAt(LocalDateTime.now());
+        
+        return userRepository.save(user);
+    }
 }
+

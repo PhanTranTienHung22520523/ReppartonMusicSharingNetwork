@@ -1,7 +1,13 @@
 com\DA2\songservice\controller\SongController.class
+com\DA2\songservice\entity\Song$LyricLine.class
 com\DA2\songservice\service\SongService.class
+com\DA2\songservice\entity\Song$SongAnalysis$SongAnalysisBuilder.class
+com\DA2\songservice\service\SongAIService.class
 com\DA2\songservice\SongServiceApplication.class
-com\DA2\songservice\repository\SongRepository.class
+com\DA2\songservice\client\AIServiceClient.class
 com\DA2\songservice\entity\Song$SongBuilder.class
+com\DA2\songservice\entity\Song$SongAnalysis.class
+com\DA2\songservice\entity\Song$LyricLine$LyricLineBuilder.class
+com\DA2\songservice\repository\SongRepository.class
 com\DA2\songservice\controller\HealthController.class
 com\DA2\songservice\entity\Song.class

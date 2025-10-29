@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  ai-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: repparton-ai-service
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - DEBUG=False
+      - PYTHONUNBUFFERED=1
+    env_file:
+      - .env
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+      - ./src/models:/app/models
+    restart: unless-stopped
+    networks:
+      - repparton-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  repparton-network:
+    external: true
+    name: repparton-microservices-network

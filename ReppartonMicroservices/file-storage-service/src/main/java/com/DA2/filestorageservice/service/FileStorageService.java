@@ -145,14 +145,14 @@ public class FileStorageService {
         }
     }
 
-    // Generate transformation URL (resize, crop, etc.)
-    public String generateTransformationUrl(String publicId, int width, int height, String crop) {
-        return cloudinary.url()
-            .transformation(ObjectUtils.asMap(
-                "width", width,
-                "height", height,
-                "crop", crop
-            ))
-            .generate(publicId);
-    }
+    // // Generate transformation URL (resize, crop, etc.)
+    // public String generateTransformationUrl(String publicId, int width, int height, String crop) {
+    //     return cloudinary.url()
+    //         .transformation(ObjectUtils.asMap(
+    //             "width", width,
+    //             "height", height,
+    //             "crop", crop
+    //         ))
+    //         .generate(publicId);
+    // }
 }

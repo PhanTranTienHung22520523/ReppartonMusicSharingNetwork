@@ -13,6 +13,7 @@ import java.util.List;
 public class SongService {
     
     private final SongRepository songRepository;
+    private final SongAIService songAIService;
 
     public List<Song> getAllPublicSongs() {
         return songRepository.findByIsPublicTrueAndIsActiveTrue();
@@ -40,6 +41,13 @@ public class SongService {
     public Song createSong(Song song) {
         song.setCreatedAt(LocalDateTime.now());
         song.setUpdatedAt(LocalDateTime.now());
+        
+        // AI Analysis: Analyze song when uploaded
+        if (song.getFileUrl() != null && !song.getFileUrl().isEmpty()) {
+            Song.SongAnalysis analysis = songAIService.analyzeSong(song.getFileUrl());
+            song.setAiAnalysis(analysis);
+        }
+        
         return songRepository.save(song);
     }
 
@@ -89,4 +97,104 @@ public class SongService {
         song.setLikesCount(Math.max(0, song.getLikesCount() - 1));
         return songRepository.save(song);
     }
+    
+    // ========== LYRIC MANAGEMENT ==========
+    
+    public Song updateLyrics(String id, String lyrics, String userId) {
+        Song song = getSongById(id);
+        
+        // Check if user owns the song
+        if (!song.getUploadedBy().equals(userId)) {
+            throw new RuntimeException("You can only update lyrics for your own songs");
+        }
+        
+        song.setLyrics(lyrics);
+        song.setUpdatedAt(LocalDateTime.now());
+        
+        // Generate synced lyrics using AI
+        if (lyrics != null && !lyrics.isEmpty()) {
+            List<Song.LyricLine> syncedLyrics = songAIService.generateSyncedLyrics(song.getFileUrl(), lyrics);
+            song.setSyncedLyrics(syncedLyrics);
+        }
+        
+        return songRepository.save(song);
+    }
+    
+    public String getLyrics(String id) {
+        Song song = getSongById(id);
+        return song.getLyrics();
+    }
+    
+    public List<Song.LyricLine> getSyncedLyrics(String id) {
+        Song song = getSongById(id);
+        return song.getSyncedLyrics();
+    }
+    
+    public Song extractLyricsFromAudio(String id, String userId) {
+        Song song = getSongById(id);
+        
+        // Check if user owns the song
+        if (!song.getUploadedBy().equals(userId)) {
+            throw new RuntimeException("You can only extract lyrics for your own songs");
+        }
+        
+        // Use AI to extract lyrics from audio
+        String extractedLyrics = songAIService.extractLyrics(song.getFileUrl());
+        song.setLyrics(extractedLyrics);
+        
+        // Generate synced lyrics
+        List<Song.LyricLine> syncedLyrics = songAIService.generateSyncedLyrics(song.getFileUrl(), extractedLyrics);
+        song.setSyncedLyrics(syncedLyrics);
+        song.setUpdatedAt(LocalDateTime.now());
+        
+        return songRepository.save(song);
+    }
+    
+    // ========== AI ANALYSIS ==========
+    
+    public Song analyzeWithAI(String id, String userId) {
+        Song song = getSongById(id);
+        
+        // Check if user owns the song
+        if (!song.getUploadedBy().equals(userId)) {
+            throw new RuntimeException("You can only analyze your own songs");
+        }
+        
+        // Run AI analysis
+        Song.SongAnalysis analysis = songAIService.analyzeSong(song.getFileUrl());
+        song.setAiAnalysis(analysis);
+        song.setUpdatedAt(LocalDateTime.now());
+        
+        return songRepository.save(song);
+    }
+    
+    public Song.SongAnalysis getAIAnalysis(String id) {
+        Song song = getSongById(id);
+        return song.getAiAnalysis();
+    }
+    
+    public List<Song> getSongsByKey(String key) {
+        // Find songs with specific musical key
+        return songRepository.findAll().stream()
+                .filter(s -> s.getAiAnalysis() != null && key.equals(s.getAiAnalysis().getKey()))
+                .toList();
+    }
+    
+    public List<Song> getSongsByMood(String mood) {
+        // Find songs with specific mood
+        return songRepository.findAll().stream()
+                .filter(s -> s.getAiAnalysis() != null && mood.equals(s.getAiAnalysis().getMood()))
+                .toList();
+    }
+    
+    public List<Song> getSongsByTempoRange(int minBpm, int maxBpm) {
+        // Find songs within tempo range
+        return songRepository.findAll().stream()
+                .filter(s -> s.getAiAnalysis() != null 
+                        && s.getAiAnalysis().getTempo() != null
+                        && s.getAiAnalysis().getTempo() >= minBpm 
+                        && s.getAiAnalysis().getTempo() <= maxBpm)
+                .toList();
+    }
 }
+

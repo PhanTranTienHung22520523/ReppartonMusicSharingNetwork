@@ -40,4 +40,35 @@ public class Song {
     private String description;
     private boolean isPublic = true;
     private boolean isActive = true;
+    
+    // Lyric support
+    private String lyrics; // Full lyrics text
+    private List<LyricLine> syncedLyrics; // Timestamped lyrics
+    
+    // AI Analysis results
+    private SongAnalysis aiAnalysis;
+    
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class LyricLine {
+        private Long timestamp; // milliseconds
+        private String text;
+    }
+    
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SongAnalysis {
+        private String key; // Musical key (e.g., "C Major", "A Minor")
+        private Integer tempo; // BPM
+        private String mood; // e.g., "happy", "sad", "energetic"
+        private Double energy; // 0.0 - 1.0
+        private Double danceability; // 0.0 - 1.0
+        private Boolean copyrightDetected;
+        private String copyrightOwner;
+        private LocalDateTime analyzedAt;
+    }
 }

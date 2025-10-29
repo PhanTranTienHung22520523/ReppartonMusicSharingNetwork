@@ -1,6 +1,8 @@
 C:\Users\phant\Downloads\DA2\ReppartonMicroservices\song-service\src\main\java\com\DA2\songservice\entity\Song.java
 C:\Users\phant\Downloads\DA2\ReppartonMicroservices\song-service\src\main\java\com\DA2\songservice\controller\HealthController.java
+C:\Users\phant\Downloads\DA2\ReppartonMicroservices\song-service\src\main\java\com\DA2\songservice\service\SongAIService.java
 C:\Users\phant\Downloads\DA2\ReppartonMicroservices\song-service\src\main\java\com\DA2\songservice\controller\SongController.java
 C:\Users\phant\Downloads\DA2\ReppartonMicroservices\song-service\src\main\java\com\DA2\songservice\service\SongService.java
+C:\Users\phant\Downloads\DA2\ReppartonMicroservices\song-service\src\main\java\com\DA2\songservice\client\AIServiceClient.java
 C:\Users\phant\Downloads\DA2\ReppartonMicroservices\song-service\src\main\java\com\DA2\songservice\repository\SongRepository.java
 C:\Users\phant\Downloads\DA2\ReppartonMicroservices\song-service\src\main\java\com\DA2\songservice\SongServiceApplication.java

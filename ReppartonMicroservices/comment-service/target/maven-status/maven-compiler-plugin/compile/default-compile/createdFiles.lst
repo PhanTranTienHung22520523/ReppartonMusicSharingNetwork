@@ -1,1 +1,5 @@
+com\DA2\commentservice\repository\CommentRepository.class
 com\DA2\commentservice\CommentServiceApplication.class
+com\DA2\commentservice\controller\CommentController.class
+com\DA2\commentservice\service\CommentService.class
+com\DA2\commentservice\entity\Comment.class

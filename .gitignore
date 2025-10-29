@@ -9,3 +9,138 @@ application-prod.yml
 application-local.yml
 frontend/.env
 ReppartonMicroservices/.env
+
+# ====================
+# AI Assistant & Copilot
+# ====================
+# GitHub Copilot chat history
+.copilot/
+**/.copilot/
+
+# VS Code Copilot workspace data
+.vscode/.copilot/
+.vscode/copilot-chat/
+
+# AI conversation logs
+.ai-chat/
+conversation-*.json
+chat-history.json
+
+# Temporary AI files
+.copilot-workspace/
+.github-copilot/
+
+# ====================
+# IDE & Editor
+# ====================
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Eclipse
+.project
+.classpath
+.settings/
+bin/
+
+# ====================
+# Build & Dependencies
+# ====================
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+.pnpm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# ====================
+# OS Files
+# ====================
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+.directory
+
+# ====================
+# Logs & Temp Files
+# ====================
+*.log
+*.log.*
+logs/
+temp/
+tmp/
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+
+# ====================
+# Database
+# ====================
+*.db
+*.sqlite
+*.sqlite3
+
+# ====================
+# Security & Secrets
+# ====================
+# API Keys
+**/secrets/
+**/credentials/
+*.key
+*.pem
+*.cert
+
+# JWT secrets
+jwt-secret.txt
+private.key
+public.key
