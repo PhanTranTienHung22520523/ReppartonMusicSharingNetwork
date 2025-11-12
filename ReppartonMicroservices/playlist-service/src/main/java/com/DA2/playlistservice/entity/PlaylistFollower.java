@@ -1,15 +1,22 @@
 package com.DA2.playlistservice.entity;
 
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
+import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
-@Document(collection = "playlist_followers")
+@Entity
+@Table(name = "playlist_followers")
 public class PlaylistFollower {
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
+
+    @Column(nullable = false)
     private String playlistId;
+
+    @Column(nullable = false)
     private String userId;
+
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     public PlaylistFollower() {

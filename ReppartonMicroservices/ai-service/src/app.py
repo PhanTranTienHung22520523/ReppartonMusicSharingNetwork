@@ -416,6 +416,86 @@ def verify_social_media():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/ai/music/analyze-chords', methods=['POST'])
+def analyze_chords():
+    """
+    Analyze chord progression in audio file
+    
+    Request:
+        - file: audio file (mp3, wav, flac, etc.)
+        - song_id: optional song identifier
+    
+    Response:
+        {
+            "song_id": "...",
+            "chord_analysis": {
+                "progression": [
+                    {
+                        "chord": "C",
+                        "start_time": 0.0,
+                        "confidence": 0.85
+                    },
+                    ...
+                ],
+                "unique_chords": ["C", "G", "Am", "F"],
+                "chord_count": 45,
+                "average_confidence": 0.78,
+                "progression_analysis": {
+                    "chord_frequencies": {"C": 12, "G": 8, "Am": 10, "F": 15},
+                    "tonic_chord": "C",
+                    "common_transitions": {...},
+                    "complexity_score": 0.15,
+                    "progression_length": 45
+                },
+                "key_compatibility": {
+                    "best_matching_key": "C major",
+                    "compatibility_score": 0.91,
+                    "all_compatibilities": {...}
+                }
+            }
+        }
+    """
+    try:
+        # Check if file is present
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        song_id = request.form.get('song_id', None)
+        
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        if not file_handler.allowed_file(file.filename):
+            return jsonify({'error': 'Invalid file format'}), 400
+        
+        # Save file temporarily
+        filepath = file_handler.save_file(file)
+        
+        try:
+            # Analyze chords in the audio file
+            logger.info(f"Analyzing chords in audio file: {filepath}")
+            chord_analysis = music_analyzer._analyze_chords_from_file(filepath)
+            
+            # Clean up temporary file
+            file_handler.delete_file(filepath)
+            
+            return jsonify({
+                'song_id': song_id,
+                'chord_analysis': chord_analysis,
+                'status': 'success'
+            }), 200
+            
+        except Exception as e:
+            file_handler.delete_file(filepath)
+            raise e
+            
+    except Exception as e:
+        logger.error(f"Error analyzing chords: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+
 # ==================== ERROR HANDLERS ====================
 
 @app.errorhandler(404)

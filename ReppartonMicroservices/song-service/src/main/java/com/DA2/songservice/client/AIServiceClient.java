@@ -229,7 +229,7 @@ public class AIServiceClient {
 
     /**
      * Verify artist authenticity using documents and social media
-     * 
+     *
      * @param artistId ID of the artist to verify
      * @param documents Map containing document URLs and social media handles
      * @return Verification result with confidence score
@@ -238,36 +238,173 @@ public class AIServiceClient {
         if (!enabled) {
             throw new IllegalStateException("AI Service is disabled");
         }
-        
+
         try {
             String url = aiServiceUrl + "/api/ai/artist/verify";
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            
+
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("artist_id", artistId);
             requestBody.putAll(documents);
-            
+
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-            
+
             ResponseEntity<Map> response = restTemplate.exchange(
-                url, 
-                HttpMethod.POST, 
-                request, 
+                url,
+                HttpMethod.POST,
+                request,
                 Map.class
             );
-            
+
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 log.info("Successfully verified artist: {}", artistId);
                 return response.getBody();
             } else {
                 throw new RuntimeException("AI Service returned non-OK status: " + response.getStatusCode());
             }
-            
+
         } catch (Exception e) {
             log.error("Failed to verify artist: {}", e.getMessage());
             throw new RuntimeException("Failed to verify artist: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Extract lyrics from audio file using speech-to-text AI
+     *
+     * @param audioUrl URL of the audio file to extract lyrics from
+     * @return Map containing extracted lyrics
+     */
+    public Map<String, Object> extractLyrics(String audioUrl) {
+        if (!enabled) {
+            throw new IllegalStateException("AI Service is disabled");
+        }
+
+        try {
+            String url = aiServiceUrl + "/api/ai/lyrics/extract";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("audio_url", audioUrl);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+
+            ResponseEntity<Map> response = restTemplate.exchange(
+                url,
+                HttpMethod.POST,
+                request,
+                Map.class
+            );
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                log.info("Successfully extracted lyrics from audio: {}", audioUrl);
+                return response.getBody();
+            } else {
+                throw new RuntimeException("AI Service returned non-OK status: " + response.getStatusCode());
+            }
+
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            log.error("AI Service lyric extraction HTTP error: {} - {}", e.getStatusCode(), e.getMessage());
+            throw new RuntimeException("Failed to extract lyrics: " + e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("Failed to call AI Service for lyric extraction: {}", e.getMessage());
+            throw new RuntimeException("AI Service unavailable for lyric extraction: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Synchronize lyrics with audio timestamps using forced alignment
+     *
+     * @param audioUrl URL of the audio file
+     * @param lyrics Plain text lyrics to synchronize
+     * @return Map containing synchronized lyrics with timestamps
+     */
+    public Map<String, Object> syncLyrics(String audioUrl, String lyrics) {
+        if (!enabled) {
+            throw new IllegalStateException("AI Service is disabled");
+        }
+
+        try {
+            String url = aiServiceUrl + "/api/ai/lyrics/sync";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("audio_url", audioUrl);
+            requestBody.put("lyrics", lyrics);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+
+            ResponseEntity<Map> response = restTemplate.exchange(
+                url,
+                HttpMethod.POST,
+                request,
+                Map.class
+            );
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                log.info("Successfully synchronized lyrics for audio: {}", audioUrl);
+                return response.getBody();
+            } else {
+                throw new RuntimeException("AI Service returned non-OK status: " + response.getStatusCode());
+            }
+
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            log.error("AI Service lyric sync HTTP error: {} - {}", e.getStatusCode(), e.getMessage());
+            throw new RuntimeException("Failed to sync lyrics: " + e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("Failed to call AI Service for lyric sync: {}", e.getMessage());
+            throw new RuntimeException("AI Service unavailable for lyric sync: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Analyze chord progression in audio file
+     *
+     * @param audioUrl URL of the audio file to analyze
+     * @return Map containing chord analysis results
+     */
+    public Map<String, Object> analyzeChords(String audioUrl) {
+        if (!enabled) {
+            throw new IllegalStateException("AI Service is disabled");
+        }
+
+        try {
+            String url = aiServiceUrl + "/api/ai/music/analyze-chords";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("audio_url", audioUrl);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+
+            ResponseEntity<Map> response = restTemplate.exchange(
+                url,
+                HttpMethod.POST,
+                request,
+                Map.class
+            );
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                log.info("Successfully analyzed chords for audio: {}", audioUrl);
+                return response.getBody();
+            } else {
+                throw new RuntimeException("AI Service returned non-OK status: " + response.getStatusCode());
+            }
+
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            log.error("AI Service chord analysis HTTP error: {} - {}", e.getStatusCode(), e.getMessage());
+            throw new RuntimeException("Failed to analyze chords: " + e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("Failed to call AI Service for chord analysis: {}", e.getMessage());
+            throw new RuntimeException("AI Service unavailable for chord analysis: " + e.getMessage(), e);
         }
     }
 }

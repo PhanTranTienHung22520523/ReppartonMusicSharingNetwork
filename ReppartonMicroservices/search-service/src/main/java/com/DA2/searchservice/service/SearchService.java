@@ -64,14 +64,24 @@ public class SearchService {
                 }
             });
 
+            // Search lyrics
+            CompletableFuture<Object> lyricsFuture = CompletableFuture.supplyAsync(() -> {
+                try {
+                    return songServiceClient.searchLyrics(query, page, size);
+                } catch (Exception e) {
+                    return Map.of("error", "Lyrics search unavailable");
+                }
+            });
+
             // Wait for all futures to complete
-            CompletableFuture.allOf(usersFuture, songsFuture, playlistsFuture, postsFuture).join();
+            CompletableFuture.allOf(usersFuture, songsFuture, playlistsFuture, postsFuture, lyricsFuture).join();
 
             // Collect results
             results.put("users", usersFuture.get());
             results.put("songs", songsFuture.get());
             results.put("playlists", playlistsFuture.get());
             results.put("posts", postsFuture.get());
+            results.put("lyrics", lyricsFuture.get());
 
         } catch (Exception e) {
             results.put("error", "Search failed: " + e.getMessage());
@@ -113,6 +123,15 @@ public class SearchService {
             return postServiceClient.searchPosts(query, page, size);
         } catch (Exception e) {
             throw new RuntimeException("Post search failed: " + e.getMessage());
+        }
+    }
+
+    // Search lyrics within songs
+    public Object searchLyrics(String query, int page, int size) {
+        try {
+            return songServiceClient.searchLyrics(query, page, size);
+        } catch (Exception e) {
+            throw new RuntimeException("Lyrics search failed: " + e.getMessage());
         }
     }
 

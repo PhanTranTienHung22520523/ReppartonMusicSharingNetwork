@@ -5,8 +5,12 @@ import com.DA2.songservice.repository.SongRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
+
 import java.util.List;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -15,10 +19,12 @@ public class SongService {
     private final SongRepository songRepository;
     private final SongAIService songAIService;
 
+    @Cacheable(value = "songs", key = "'public'")
     public List<Song> getAllPublicSongs() {
         return songRepository.findByIsPublicTrueAndIsActiveTrue();
     }
 
+    @Cacheable(value = "songs", key = "'song:' + #id")
     public Song getSongById(String id) {
         return songRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Song not found with id: " + id));
@@ -32,6 +38,14 @@ public class SongService {
         // Combine results (remove duplicates in real implementation)
         titleResults.addAll(artistResults);
         return titleResults;
+    }
+
+    public List<Song> searchLyrics(String query) {
+        // Search songs by lyrics content
+        return songRepository.findAll().stream()
+                .filter(song -> song.getLyrics() != null
+                        && song.getLyrics().toLowerCase().contains(query.toLowerCase()))
+                .toList();
     }
 
     public List<Song> getSongsByUser(String userId) {
@@ -51,6 +65,7 @@ public class SongService {
         return songRepository.save(song);
     }
 
+    @CacheEvict(value = "songs", key = "'song:' + #id")
     public Song updateSong(String id, Song songUpdate, String userId) {
         Song existingSong = getSongById(id);
         
@@ -69,6 +84,11 @@ public class SongService {
         return songRepository.save(existingSong);
     }
 
+    @Caching(evict = {
+        @CacheEvict(value = "songs", key = "'song:' + #id"),
+        @CacheEvict(value = "lyrics", key = "'lyrics:' + #id"),
+        @CacheEvict(value = "lyrics", key = "'synced:' + #id")
+    })
     public void deleteSong(String id, String userId) {
         Song song = getSongById(id);
         
@@ -100,6 +120,10 @@ public class SongService {
     
     // ========== LYRIC MANAGEMENT ==========
     
+    @Caching(evict = {
+        @CacheEvict(value = "lyrics", key = "'lyrics:' + #id"),
+        @CacheEvict(value = "lyrics", key = "'synced:' + #id")
+    })
     public Song updateLyrics(String id, String lyrics, String userId) {
         Song song = getSongById(id);
         
@@ -120,11 +144,14 @@ public class SongService {
         return songRepository.save(song);
     }
     
+    @Cacheable(value = "lyrics", key = "'lyrics:' + #id")
+    @Cacheable(value = "lyrics", key = "'extracted:' + #id")
     public String getLyrics(String id) {
         Song song = getSongById(id);
         return song.getLyrics();
     }
     
+    @Cacheable(value = "lyrics", key = "'synced:' + #id")
     public List<Song.LyricLine> getSyncedLyrics(String id) {
         Song song = getSongById(id);
         return song.getSyncedLyrics();
@@ -144,6 +171,27 @@ public class SongService {
         
         // Generate synced lyrics
         List<Song.LyricLine> syncedLyrics = songAIService.generateSyncedLyrics(song.getFileUrl(), extractedLyrics);
+        song.setSyncedLyrics(syncedLyrics);
+        song.setUpdatedAt(LocalDateTime.now());
+        
+        return songRepository.save(song);
+    }
+    
+    public Song syncLyricsWithAudio(String id, String userId) {
+        Song song = getSongById(id);
+        
+        // Check if user owns the song
+        if (!song.getUploadedBy().equals(userId)) {
+            throw new RuntimeException("You can only sync lyrics for your own songs");
+        }
+        
+        // Check if lyrics exist
+        if (song.getLyrics() == null || song.getLyrics().trim().isEmpty()) {
+            throw new RuntimeException("Lyrics must be set before syncing");
+        }
+        
+        // Generate synced lyrics with timestamps
+        List<Song.LyricLine> syncedLyrics = songAIService.generateSyncedLyrics(song.getFileUrl(), song.getLyrics());
         song.setSyncedLyrics(syncedLyrics);
         song.setUpdatedAt(LocalDateTime.now());
         
@@ -194,6 +242,50 @@ public class SongService {
                         && s.getAiAnalysis().getTempo() != null
                         && s.getAiAnalysis().getTempo() >= minBpm 
                         && s.getAiAnalysis().getTempo() <= maxBpm)
+                .toList();
+    }
+
+    @Cacheable(value = "chords", key = "'chords:' + #id")
+    public Song.ChordAnalysis getSongChords(String id) {
+        Song song = getSongById(id);
+        if (song.getAiAnalysis() == null || song.getAiAnalysis().getChordAnalysis() == null) {
+            throw new RuntimeException("Chord analysis not available for this song");
+        }
+        return song.getAiAnalysis().getChordAnalysis();
+    }
+
+    @CacheEvict(value = "chords", key = "'chords:' + #id")
+    public Song.ChordAnalysis analyzeSongChords(String id) {
+        Song song = getSongById(id);
+        if (song.getFileUrl() == null || song.getFileUrl().isEmpty()) {
+            throw new RuntimeException("Song file URL is required for chord analysis");
+        }
+
+        // Analyze chords using AI service
+        Song.ChordAnalysis chordAnalysis = songAIService.analyzeSongChords(song.getFileUrl());
+
+        // Update song with chord analysis
+        if (song.getAiAnalysis() == null) {
+            song.setAiAnalysis(Song.SongAnalysis.builder()
+                .chordAnalysis(chordAnalysis)
+                .analyzedAt(java.time.LocalDateTime.now())
+                .build());
+        } else {
+            song.getAiAnalysis().setChordAnalysis(chordAnalysis);
+            song.getAiAnalysis().setAnalyzedAt(java.time.LocalDateTime.now());
+        }
+
+        songRepository.save(song);
+        return chordAnalysis;
+    }
+
+    public List<Song> getSongsByChord(String chord) {
+        // Find songs that contain specific chord in their progression
+        return songRepository.findAll().stream()
+                .filter(s -> s.getAiAnalysis() != null
+                        && s.getAiAnalysis().getChordAnalysis() != null
+                        && s.getAiAnalysis().getChordAnalysis().getUniqueChords() != null
+                        && s.getAiAnalysis().getChordAnalysis().getUniqueChords().contains(chord))
                 .toList();
     }
 }

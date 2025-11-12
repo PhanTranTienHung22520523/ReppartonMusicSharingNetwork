@@ -70,5 +70,53 @@ public class Song {
         private Boolean copyrightDetected;
         private String copyrightOwner;
         private LocalDateTime analyzedAt;
+        
+        // Chord Analysis
+        private ChordAnalysis chordAnalysis;
+    }
+    
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ChordAnalysis {
+        private List<ChordSegment> progression; // Chord progression over time
+        private List<String> uniqueChords; // List of unique chords used
+        private Integer chordCount; // Total number of chord segments
+        private Double averageConfidence; // Average chord detection confidence
+        private ProgressionAnalysis progressionAnalysis; // Analysis of chord patterns
+        private KeyCompatibility keyCompatibility; // How well chords fit the key
+    }
+    
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ChordSegment {
+        private String chord; // Chord name (e.g., "C", "Am", "Fmaj7")
+        private Double startTime; // Start time in seconds
+        private Double confidence; // Detection confidence (0.0-1.0)
+    }
+    
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ProgressionAnalysis {
+        private java.util.Map<String, Integer> chordFrequencies; // Frequency of each chord
+        private String tonicChord; // Most common chord (usually tonic)
+        private java.util.Map<String, Integer> commonTransitions; // Common chord transitions
+        private Double complexityScore; // Progression complexity (0.0-1.0)
+        private Integer progressionLength; // Total segments in progression
+    }
+    
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class KeyCompatibility {
+        private String bestMatchingKey; // Best matching musical key
+        private Double compatibilityScore; // Compatibility score (0.0-1.0)
+        private java.util.Map<String, Double> allCompatibilities; // Compatibility with all keys
     }
 }

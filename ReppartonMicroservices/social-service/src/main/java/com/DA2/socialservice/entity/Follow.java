@@ -1,15 +1,22 @@
 package com.DA2.socialservice.entity;
 
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
+import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
-@Document(collection = "follows")
+@Entity
+@Table(name = "follows")
 public class Follow {
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
+
+    @Column(nullable = false)
     private String followerId; // User who follows
+
+    @Column(nullable = false)
     private String followingId; // User being followed
+
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     public Follow() {

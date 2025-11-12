@@ -107,6 +107,22 @@ public class SearchController {
         }
     }
 
+    // Search lyrics only
+    @GetMapping("/lyrics")
+    public ResponseEntity<?> searchLyrics(
+            @RequestParam String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        try {
+            Object results = searchService.searchLyrics(query, page, size);
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", e.getMessage()
+            ));
+        }
+    }
+
     // Quick search for autocomplete
     @GetMapping("/quick")
     public ResponseEntity<?> quickSearch(

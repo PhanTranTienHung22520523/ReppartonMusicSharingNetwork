@@ -47,6 +47,16 @@ public class SongController {
         }
     }
 
+    @GetMapping("/search/lyrics")
+    public ResponseEntity<ApiResponse<List<Song>>> searchLyrics(@RequestParam String query) {
+        try {
+            List<Song> songs = songService.searchLyrics(query);
+            return ResponseEntity.ok(ApiResponse.success("Lyrics search completed", songs));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @GetMapping("/user/{userId}")
     public ResponseEntity<ApiResponse<List<Song>>> getSongsByUser(@PathVariable String userId) {
         try {
@@ -142,6 +152,18 @@ public class SongController {
         }
     }
     
+    @PostMapping("/{id}/lyrics/sync")
+    public ResponseEntity<ApiResponse<Song>> syncLyrics(
+            @PathVariable String id,
+            @RequestHeader("X-User-Id") String userId) {
+        try {
+            Song song = songService.syncLyricsWithAudio(id, userId);
+            return ResponseEntity.ok(ApiResponse.success("Lyrics synchronized with audio", song));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+    
     // ========== AI ANALYSIS ENDPOINTS ==========
     
     @PostMapping("/{id}/analyze")
@@ -193,6 +215,36 @@ public class SongController {
         try {
             List<Song> songs = songService.getSongsByTempoRange(minBpm, maxBpm);
             return ResponseEntity.ok(ApiResponse.success("Songs by tempo retrieved", songs));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/chords")
+    public ResponseEntity<ApiResponse<Song.ChordAnalysis>> getSongChords(@PathVariable String id) {
+        try {
+            Song.ChordAnalysis chordAnalysis = songService.getSongChords(id);
+            return ResponseEntity.ok(ApiResponse.success("Chord analysis retrieved", chordAnalysis));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/analyze-chords")
+    public ResponseEntity<ApiResponse<Song.ChordAnalysis>> analyzeSongChords(@PathVariable String id) {
+        try {
+            Song.ChordAnalysis chordAnalysis = songService.analyzeSongChords(id);
+            return ResponseEntity.ok(ApiResponse.success("Chord analysis completed", chordAnalysis));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/by-chord/{chord}")
+    public ResponseEntity<ApiResponse<List<Song>>> getSongsByChord(@PathVariable String chord) {
+        try {
+            List<Song> songs = songService.getSongsByChord(chord);
+            return ResponseEntity.ok(ApiResponse.success("Songs by chord retrieved", songs));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
