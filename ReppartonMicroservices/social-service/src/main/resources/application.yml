@@ -4,7 +4,7 @@ spring:
   # MongoDB Configuration
   data:
     mongodb:
-      uri: ${MONGODB_URI:mongodb+srv://hpdariteriiii:Hp31032004@repparton.82qvi0m.mongodb.net/repparton_social?retryWrites=true&w=majority&appName=Repparton}
+      uri: ${MONGODB_URI}
   # PostgreSQL for Analytics (optional)
   # datasource:
   #   url: ${POSTGRES_URL:jdbc:postgresql://localhost:5432/repparton_analytics}

@@ -3,7 +3,7 @@ spring:
     name: comment-service
   data:
     mongodb:
-      uri: ${MONGODB_URI:mongodb+srv://hpdariteriiii:Hp31032004@repparton.82qvi0m.mongodb.net/repparton_comments?retryWrites=true&w=majority&appName=Repparton}
+      uri: ${MONGODB_URI}
 
 server:
   port: ${SERVER_PORT:8085}
