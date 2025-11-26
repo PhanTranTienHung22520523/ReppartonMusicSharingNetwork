@@ -1,4 +1,6 @@
-const API_URL = `${import.meta.env.VITE_API_BASE_URL}/shares`;
+import { API_ENDPOINTS } from '../config/api.config';
+
+const API_URL = API_ENDPOINTS.shares;
 
 export async function getShareCountBySong(songId) {
   const res = await fetch(`${API_URL}/song/${songId}`);

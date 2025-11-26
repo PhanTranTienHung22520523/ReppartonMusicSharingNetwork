@@ -36,4 +36,8 @@ public interface PostRepository extends MongoRepository<Post, String> {
     // Search posts by content
     @Query("{ 'content': { $regex: ?0, $options: 'i' } }")
     Page<Post> searchByContent(String query, Pageable pageable);
+
+    // Location-based queries
+    Page<Post> findByLocationNameContainingIgnoreCaseOrderByCreatedAtDesc(String locationName, Pageable pageable);
+    Page<Post> findByLatitudeNotNullAndLongitudeNotNull(Pageable pageable);
 }

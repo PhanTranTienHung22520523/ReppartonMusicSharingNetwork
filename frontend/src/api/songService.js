@@ -1,22 +1,6 @@
-const API_URL = `${import.meta.env.VITE_API_BASE_URL}/songs`;
+import { API_ENDPOINTS, getAuthToken, createHeaders } from '../config/api.config';
 
-// Get auth token from localStorage
-const getAuthToken = () => {
-  const user = localStorage.getItem("user");
-  return user ? JSON.parse(user).token : null;
-};
-
-// Create headers with auth token
-const createHeaders = (includeAuth = false) => {
-  const headers = {};
-  if (includeAuth) {
-    const token = getAuthToken();
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-  }
-  return headers;
-};
+const API_URL = API_ENDPOINTS.songs;
 
 // Upload song
 export async function uploadSong(formData) {

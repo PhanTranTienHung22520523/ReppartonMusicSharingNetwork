@@ -3,7 +3,6 @@ package com.DA2.songservice.controller;
 import com.DA2.shared.dto.ApiResponse;
 import com.DA2.songservice.entity.Song;
 import com.DA2.songservice.service.SongService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,11 +10,14 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/songs")
-@RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class SongController {
     
     private final SongService songService;
+    
+    public SongController(SongService songService) {
+        this.songService = songService;
+    }
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<Song>>> getAllPublicSongs() {

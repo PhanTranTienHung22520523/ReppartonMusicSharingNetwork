@@ -1,14 +1,14 @@
 package com.DA2.playlistservice.repository;
 
 import com.DA2.playlistservice.entity.PlaylistFollower;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface PlaylistFollowerRepository extends JpaRepository<PlaylistFollower, String> {
+public interface PlaylistFollowerRepository extends MongoRepository<PlaylistFollower, String> {
 
     // Check if user follows playlist
     Optional<PlaylistFollower> findByPlaylistIdAndUserId(String playlistId, String userId);

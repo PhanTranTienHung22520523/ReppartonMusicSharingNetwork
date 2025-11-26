@@ -1,22 +1,6 @@
-const API_URL = `${import.meta.env.VITE_API_BASE_URL}/search`;
+import { API_ENDPOINTS, getAuthToken, createHeaders } from '../config/api.config';
 
-// Get auth token from localStorage
-const getAuthToken = () => {
-  const user = localStorage.getItem("user");
-  return user ? JSON.parse(user).token : null;
-};
-
-// Create headers with auth token
-const createHeaders = (includeAuth = true) => {
-  const headers = { "Content-Type": "application/json" };
-  if (includeAuth) {
-    const token = getAuthToken();
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-  }
-  return headers;
-};
+const API_URL = API_ENDPOINTS.search;
 
 // Global search - returns songs, users, and playlists
 export async function globalSearch(query, page = 0, size = 10) {

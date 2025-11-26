@@ -1,13 +1,13 @@
 package com.DA2.socialservice.repository;
 
 import com.DA2.socialservice.entity.Like;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface LikeRepository extends JpaRepository<Like, String> {
+public interface LikeRepository extends MongoRepository<Like, String> {
 
     Optional<Like> findByUserIdAndItemIdAndItemType(String userId, String itemId, String itemType);
 

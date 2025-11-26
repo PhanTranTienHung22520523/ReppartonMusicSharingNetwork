@@ -1,28 +1,6 @@
-const API_URL = `${import.meta.env.VITE_API_BASE_URL}/playlists`;
+import { API_ENDPOINTS, getAuthToken, createHeaders } from '../config/api.config';
 
-// Get auth token from localStorage
-const getAuthToken = () => {
-  const user = localStorage.getItem("user");
-  const token = user ? JSON.parse(user).token : null;
-  console.log("Auth token:", token ? "exists" : "missing");
-  return token;
-};
-
-// Create headers with auth token
-const createHeaders = (includeAuth = true) => {
-  const headers = { "Content-Type": "application/json" };
-  if (includeAuth) {
-    const token = getAuthToken();
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-      console.log("Adding auth header with token");
-    } else {
-      console.log("No token available for auth header");
-    }
-  }
-  console.log("Request headers:", headers);
-  return headers;
-};
+const API_URL = API_ENDPOINTS.playlists;
 
 // Get user playlists
 export async function getUserPlaylists() {

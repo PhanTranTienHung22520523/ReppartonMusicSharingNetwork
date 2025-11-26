@@ -2,7 +2,6 @@ package com.DA2.songservice.service;
 
 import com.DA2.songservice.entity.Song;
 import com.DA2.songservice.repository.SongRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import org.springframework.cache.annotation.Cacheable;
@@ -13,11 +12,15 @@ import java.util.List;
 import java.time.LocalDateTime;
 
 @Service
-@RequiredArgsConstructor
 public class SongService {
     
     private final SongRepository songRepository;
     private final SongAIService songAIService;
+    
+    public SongService(SongRepository songRepository, SongAIService songAIService) {
+        this.songRepository = songRepository;
+        this.songAIService = songAIService;
+    }
 
     @Cacheable(value = "songs", key = "'public'")
     public List<Song> getAllPublicSongs() {
@@ -56,10 +59,12 @@ public class SongService {
         song.setCreatedAt(LocalDateTime.now());
         song.setUpdatedAt(LocalDateTime.now());
         
-        // AI Analysis: Analyze song when uploaded
+        // AI Analysis
         if (song.getFileUrl() != null && !song.getFileUrl().isEmpty()) {
             Song.SongAnalysis analysis = songAIService.analyzeSong(song.getFileUrl());
-            song.setAiAnalysis(analysis);
+            if (analysis != null) {
+                song.setAiAnalysis(analysis);
+            }
         }
         
         return songRepository.save(song);
@@ -135,17 +140,18 @@ public class SongService {
         song.setLyrics(lyrics);
         song.setUpdatedAt(LocalDateTime.now());
         
-        // Generate synced lyrics using AI
+        // Generate synced lyrics
         if (lyrics != null && !lyrics.isEmpty()) {
             List<Song.LyricLine> syncedLyrics = songAIService.generateSyncedLyrics(song.getFileUrl(), lyrics);
-            song.setSyncedLyrics(syncedLyrics);
+            if (syncedLyrics != null && !syncedLyrics.isEmpty()) {
+                song.setSyncedLyrics(syncedLyrics);
+            }
         }
         
         return songRepository.save(song);
     }
     
     @Cacheable(value = "lyrics", key = "'lyrics:' + #id")
-    @Cacheable(value = "lyrics", key = "'extracted:' + #id")
     public String getLyrics(String id) {
         Song song = getSongById(id);
         return song.getLyrics();
@@ -165,13 +171,15 @@ public class SongService {
             throw new RuntimeException("You can only extract lyrics for your own songs");
         }
         
-        // Use AI to extract lyrics from audio
+        // Extract lyrics using AI
         String extractedLyrics = songAIService.extractLyrics(song.getFileUrl());
-        song.setLyrics(extractedLyrics);
-        
-        // Generate synced lyrics
-        List<Song.LyricLine> syncedLyrics = songAIService.generateSyncedLyrics(song.getFileUrl(), extractedLyrics);
-        song.setSyncedLyrics(syncedLyrics);
+        if (extractedLyrics != null) {
+            song.setLyrics(extractedLyrics);
+            List<Song.LyricLine> syncedLyrics = songAIService.generateSyncedLyrics(song.getFileUrl(), extractedLyrics);
+            if (syncedLyrics != null && !syncedLyrics.isEmpty()) {
+                song.setSyncedLyrics(syncedLyrics);
+            }
+        }
         song.setUpdatedAt(LocalDateTime.now());
         
         return songRepository.save(song);
@@ -190,9 +198,11 @@ public class SongService {
             throw new RuntimeException("Lyrics must be set before syncing");
         }
         
-        // Generate synced lyrics with timestamps
+        // Generate synced lyrics
         List<Song.LyricLine> syncedLyrics = songAIService.generateSyncedLyrics(song.getFileUrl(), song.getLyrics());
-        song.setSyncedLyrics(syncedLyrics);
+        if (syncedLyrics != null && !syncedLyrics.isEmpty()) {
+            song.setSyncedLyrics(syncedLyrics);
+        }
         song.setUpdatedAt(LocalDateTime.now());
         
         return songRepository.save(song);
@@ -210,7 +220,9 @@ public class SongService {
         
         // Run AI analysis
         Song.SongAnalysis analysis = songAIService.analyzeSong(song.getFileUrl());
-        song.setAiAnalysis(analysis);
+        if (analysis != null) {
+            song.setAiAnalysis(analysis);
+        }
         song.setUpdatedAt(LocalDateTime.now());
         
         return songRepository.save(song);
@@ -261,18 +273,20 @@ public class SongService {
             throw new RuntimeException("Song file URL is required for chord analysis");
         }
 
-        // Analyze chords using AI service
+        // Analyze chords using AI
         Song.ChordAnalysis chordAnalysis = songAIService.analyzeSongChords(song.getFileUrl());
 
         // Update song with chord analysis
-        if (song.getAiAnalysis() == null) {
-            song.setAiAnalysis(Song.SongAnalysis.builder()
-                .chordAnalysis(chordAnalysis)
-                .analyzedAt(java.time.LocalDateTime.now())
-                .build());
-        } else {
-            song.getAiAnalysis().setChordAnalysis(chordAnalysis);
-            song.getAiAnalysis().setAnalyzedAt(java.time.LocalDateTime.now());
+        if (chordAnalysis != null) {
+            if (song.getAiAnalysis() == null) {
+                song.setAiAnalysis(Song.SongAnalysis.builder()
+                    .chordAnalysis(chordAnalysis)
+                    .analyzedAt(java.time.LocalDateTime.now())
+                    .build());
+            } else {
+                song.getAiAnalysis().setChordAnalysis(chordAnalysis);
+                song.getAiAnalysis().setAnalyzedAt(java.time.LocalDateTime.now());
+            }
         }
 
         songRepository.save(song);

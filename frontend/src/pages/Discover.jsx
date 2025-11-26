@@ -1,4 +1,5 @@
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import MainLayout from "../components/MainLayout";
 import SearchResults from "../components/SearchResults";
 import { useEffect, useState } from "react";
@@ -13,6 +14,7 @@ import SongCard from "../components/SongCard";
 
 export default function Discover() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get("search");
   const [recent, setRecent] = useState([]);
@@ -49,23 +51,23 @@ export default function Discover() {
 
   return (
     <MainLayout>
-      <h3 className="fw-bold mb-4">Khám phá âm nhạc</h3>
+      <h3 className="fw-bold mb-4">{t("discover.title")}</h3>
       {loading ? (
-        <div>Đang tải...</div>
+        <div>{t("common.loading")}</div>
       ) : (
         <>
           {user && (
             <>
               <div className="d-flex justify-content-between align-items-center">
-                <h5 className="fw-bold mt-4 mb-3">🎵 Nghe gần đây</h5>
+                <h5 className="fw-bold mt-4 mb-3">🎵 {t("discover.recent")}</h5>
                 {uniqueRecent.length > 0 && (
                   <Link to="/recent-songs" className="btn btn-outline-primary btn-sm">
-                    Xem thêm →
+                    {t("discover.viewAll")} →
                   </Link>
                 )}
               </div>
               <div className="row g-4 mb-4">
-                {uniqueRecent.length === 0 && <div className="text-muted ms-3">Bạn chưa nghe bài hát nào gần đây.</div>}
+                {uniqueRecent.length === 0 && <div className="text-muted ms-3">{t("discover.recent")} - {t("common.loading")}</div>}
                 {uniqueRecent.slice(0, 5).map(song => (
                   <div className="col-md-4" key={song.id}>
                     <SongCard song={song} />
@@ -75,9 +77,9 @@ export default function Discover() {
             </>
           )}
 
-          <h5 className="fw-bold mt-4 mb-3">Top bài hát mới nhất</h5>
+          <h5 className="fw-bold mt-4 mb-3">{t("discover.newest")}</h5>
           <div className="row g-4 mb-4">
-            {newest.length === 0 && <div className="text-muted ms-3">Không có bài hát mới.</div>}
+            {newest.length === 0 && <div className="text-muted ms-3">{t("common.loading")}</div>}
             {newest.map(song => (
               <div className="col-md-4" key={song.id}>
                 <SongCard song={song} />
@@ -85,9 +87,9 @@ export default function Discover() {
             ))}
           </div>
 
-          <h5 className="fw-bold mt-4 mb-3">Top bài hát nhiều view nhất</h5>
+          <h5 className="fw-bold mt-4 mb-3">{t("discover.mostViewed")}</h5>
           <div className="row g-4 mb-4">
-            {mostViewed.length === 0 && <div className="text-muted ms-3">Không có bài hát nổi bật.</div>}
+            {mostViewed.length === 0 && <div className="text-muted ms-3">{t("common.loading")}</div>}
             {mostViewed.map(song => (
               <div className="col-md-4" key={song.id}>
                 <SongCard song={song} />

@@ -1,25 +1,20 @@
 package com.DA2.socialservice.entity;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "shares")
+@Document(collection = "shares")
 public class Share {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @Column(nullable = false)
     private String userId;
 
-    @Column(nullable = false)
     private String itemId; // song, post, playlist
 
-    @Column(nullable = false)
     private String itemType; // "song", "post", "playlist"
 
-    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     public Share() {

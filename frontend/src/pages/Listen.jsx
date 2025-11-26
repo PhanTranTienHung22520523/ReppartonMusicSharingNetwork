@@ -1,14 +1,18 @@
 import { useMusicPlayer } from "../contexts/MusicPlayerContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import MainLayout from "../components/MainLayout";
 import { useEffect, useState } from "react";
 import { getShareCountBySong, shareSong } from "../api/shareService";
 import { useAuth } from "../contexts/AuthContext";
 import CommentSection from "../components/CommentSection";
+import "./Listen.css";
 
 export default function Listen() {
-  const { currentSong } = useMusicPlayer();
+  const { currentSong, isPlaying } = useMusicPlayer();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [shareCount, setShareCount] = useState(0);
+  const [isLiked, setIsLiked] = useState(false);
 
   useEffect(() => {
     if (currentSong) {
@@ -26,32 +30,123 @@ export default function Listen() {
     alert("Đã chia sẻ bài hát!");
   };
 
-  if (!currentSong) return <MainLayout><div>Chưa chọn bài hát nào.</div></MainLayout>;
+  const handleLike = () => {
+    setIsLiked(!isLiked);
+  };
+
+  if (!currentSong) {
+    return (
+      <MainLayout>
+        <div className="no-song-container">
+          <div className="no-song-content">
+            <i className="bi bi-music-note-beamed no-song-icon"></i>
+            <h3>{t("listen.noSong")}</h3>
+            <p>{t("listen.chooseSong")}</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
-      <div className="row justify-content-center">
-        {/* Cột trái: Thông tin bài hát */}
-        <div className="col-md-7 d-flex flex-column align-items-center">
-          <img src={currentSong.coverUrl} alt="cover" style={{ width: 320, height: 320, borderRadius: 24, objectFit: "cover", boxShadow: "0 8px 32px rgba(111,66,193,0.12)" }} />
-          <div className="fw-bold fs-2 mt-4">{currentSong.title}</div>
-          <div className="text-muted mb-3">{currentSong.artist?.username || currentSong.artistName}</div>
-          <div className="d-flex gap-4 mt-2">
-            <span><i className="bi bi-headphones me-1"></i>{currentSong.views || 0} lượt nghe</span>
-            <span><i className="bi bi-clock me-1"></i>{currentSong.createdAt ? new Date(currentSong.createdAt).toLocaleDateString() : ""}</span>
-            <span>
-              <button className="btn btn-light btn-sm" onClick={handleShare} title="Chia sẻ">
-                <i className="bi bi-share"></i>
-              </button>
-              <span className="ms-1">{shareCount} lượt chia sẻ</span>
-            </span>
-          </div>
-          <div className="mt-4">{currentSong.description}</div>
+      <div className="listen-page">
+        {/* Animated Background */}
+        <div className="listen-bg-gradient"></div>
+        <div className="listen-bg-particles">
+          {[...Array(20)].map((_, i) => (
+            <div key={i} className="particle" style={{
+              left: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 5}s`,
+              animationDuration: `${5 + Math.random() * 10}s`
+            }}></div>
+          ))}
         </div>
-        {/* Cột phải: Comment */}
-        <div className="col-md-4">
-          <div className="card p-3 shadow-sm" style={{ borderRadius: 18, minHeight: 400 }}>
-            <CommentSection songId={currentSong.id} />
+
+        <div className="row justify-content-center position-relative">
+          {/* Left Column: Song Info */}
+          <div className="col-md-7 d-flex flex-column align-items-center">
+            {/* Album Art with Vinyl Effect */}
+            <div className="album-container">
+              <div className={`vinyl-disc ${isPlaying ? 'spinning' : ''}`}>
+                <div className="vinyl-center"></div>
+              </div>
+              <div className={`album-cover ${isPlaying ? 'playing' : ''}`}>
+                <img 
+                  src={currentSong.coverUrl || '/default-cover.png'} 
+                  alt="cover"
+                  onError={(e) => e.target.src = '/default-cover.png'}
+                />
+                <div className="album-overlay">
+                  <div className="sound-waves">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Song Title with Animation */}
+            <h1 className="song-title">{currentSong.title}</h1>
+            <div className="artist-name">{currentSong.artist?.username || currentSong.artistName}</div>
+
+            {/* Stats with Icons */}
+            <div className="song-stats">
+              <div className="stat-item">
+                <i className="bi bi-headphones"></i>
+                <span>{(currentSong.views || 0).toLocaleString()}</span>
+              </div>
+              <div className="stat-divider"></div>
+              <div className="stat-item">
+                <i className="bi bi-clock-history"></i>
+                <span>{currentSong.createdAt ? new Date(currentSong.createdAt).toLocaleDateString() : "Today"}</span>
+              </div>
+              <div className="stat-divider"></div>
+              <div className="stat-item">
+                <i className="bi bi-share"></i>
+                <span>{shareCount}</span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="action-buttons">
+              <button 
+                className={`action-btn ${isLiked ? 'liked' : ''}`}
+                onClick={handleLike}
+              >
+                <i className={`bi ${isLiked ? 'bi-heart-fill' : 'bi-heart'}`}></i>
+                <span>{t("music.like")}</span>
+              </button>
+              <button className="action-btn" onClick={handleShare}>
+                <i className="bi bi-share"></i>
+                <span>{t("music.share")}</span>
+              </button>
+              <button className="action-btn">
+                <i className="bi bi-music-note-list"></i>
+                <span>{t("listen.addToPlaylist")}</span>
+              </button>
+              <button className="action-btn">
+                <i className="bi bi-download"></i>
+                <span>{t("music.download")}</span>
+              </button>
+            </div>
+
+            {/* Description */}
+            {currentSong.description && (
+              <div className="song-description">
+                <h5>{t("listen.about")}</h5>
+                <p>{currentSong.description}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Right Column: Comments */}
+          <div className="col-md-4">
+            <div className="comments-container">
+              <CommentSection songId={currentSong.id} />
+            </div>
           </div>
         </div>
       </div>

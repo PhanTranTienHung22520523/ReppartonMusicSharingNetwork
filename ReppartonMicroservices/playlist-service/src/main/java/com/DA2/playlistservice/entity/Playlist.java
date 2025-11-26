@@ -1,43 +1,32 @@
 package com.DA2.playlistservice.entity;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-@Entity
-@Table(name = "playlists")
+@Document(collection = "playlists")
 public class Playlist {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @Column(nullable = false)
     private String userId;
 
-    @Column(nullable = false)
     private String name;
 
-    @Column(length = 1000)
     private String description;
 
     private String coverUrl;
 
-    @ElementCollection
-    @CollectionTable(name = "playlist_songs", joinColumns = @JoinColumn(name = "playlist_id"))
-    @Column(name = "song_id")
     private List<String> songIds;
 
-    @Column(nullable = false)
     private boolean isPrivate = false;
 
-    @Column(nullable = false)
     private int followers = 0;
 
-    @Column(nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     public Playlist() {

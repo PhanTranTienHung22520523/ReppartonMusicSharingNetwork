@@ -1,22 +1,7 @@
-const API_URL = `${import.meta.env.VITE_API_BASE_URL}/notifications`;
+import { API_ENDPOINTS, WS_ENDPOINTS, getAuthToken, createHeaders } from '../config/api.config';
 
-// Get auth token from localStorage
-const getAuthToken = () => {
-  const user = localStorage.getItem("user");
-  return user ? JSON.parse(user).token : null;
-};
-
-// Create headers with auth token
-const createHeaders = (includeAuth = true) => {
-  const headers = { "Content-Type": "application/json" };
-  if (includeAuth) {
-    const token = getAuthToken();
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-  }
-  return headers;
-};
+const API_URL = API_ENDPOINTS.notifications;
+const WS_URL = WS_ENDPOINTS.notifications;
 
 // Get user notifications
 export async function getUserNotifications(page = 0, size = 20) {
@@ -149,5 +134,85 @@ export async function deleteAllNotifications() {
     return { success: true };
   } catch (error) {
     throw new Error(error.message || "Network error");
+  }
+}
+
+// WebSocket connection for real-time notifications
+let ws = null;
+let reconnectInterval = null;
+
+export function connectNotificationWebSocket(onMessage, onError) {
+  const token = getAuthToken();
+  
+  if (!token) {
+    console.log('No auth token, skipping WebSocket connection');
+    return null;
+  }
+  
+  try {
+    // Close existing connection if any
+    if (ws) {
+      ws.close();
+    }
+    
+    // Create new WebSocket connection
+    ws = new WebSocket(`${WS_URL}?token=${token}`);
+    
+    ws.onopen = () => {
+      console.log('Notification WebSocket connected');
+      if (reconnectInterval) {
+        clearInterval(reconnectInterval);
+        reconnectInterval = null;
+      }
+    };
+    
+    ws.onmessage = (event) => {
+      try {
+        const notification = JSON.parse(event.data);
+        if (onMessage) {
+          onMessage(notification);
+        }
+      } catch (error) {
+        console.error('Error parsing notification:', error);
+      }
+    };
+    
+    ws.onerror = (error) => {
+      console.error('Notification WebSocket error:', error);
+      if (onError) {
+        onError(error);
+      }
+    };
+    
+    ws.onclose = () => {
+      console.log('Notification WebSocket closed');
+      // Try to reconnect after 5 seconds
+      if (!reconnectInterval) {
+        reconnectInterval = setInterval(() => {
+          console.log('Attempting to reconnect WebSocket...');
+          connectNotificationWebSocket(onMessage, onError);
+        }, 5000);
+      }
+    };
+    
+    return ws;
+  } catch (error) {
+    console.error('Failed to connect WebSocket:', error);
+    if (onError) {
+      onError(error);
+    }
+    return null;
+  }
+}
+
+export function disconnectNotificationWebSocket() {
+  if (reconnectInterval) {
+    clearInterval(reconnectInterval);
+    reconnectInterval = null;
+  }
+  
+  if (ws) {
+    ws.close();
+    ws = null;
   }
 }

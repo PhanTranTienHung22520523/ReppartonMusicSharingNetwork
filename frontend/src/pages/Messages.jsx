@@ -9,8 +9,10 @@ import {
   startConversation,
 } from "../api/messageService";
 import { globalSearch } from "../api/searchService";
+import { useWebSocket } from "../hooks/useWebSocket";
+import { WS_ENDPOINTS } from "../config/api.config";
 import LoginRequireModal from "../components/LoginRequireModal";
-import { FaLock, FaMusic, FaSearch, FaPlus, FaTimes } from "react-icons/fa";
+import { FaLock, FaMusic, FaSearch, FaPlus, FaTimes, FaPlug } from "react-icons/fa";
 
 export default function Messages() {
   const { user } = useAuth();
@@ -28,6 +30,36 @@ export default function Messages() {
 
   // Check if user is ARTIST (case insensitive)
   const isArtist = user && user.role && user.role.toUpperCase() === 'ARTIST';
+
+  // WebSocket connection for real-time messaging
+  const { isConnected, connectionStatus, lastMessage, sendMessage: sendWsMessage } = useWebSocket(
+    WS_ENDPOINTS.messages,
+    {
+      autoConnect: isArtist,
+      onMessage: (message) => {
+        console.log('New message received via WebSocket:', message);
+        if (message.type === 'message' && selectedConv) {
+          // Check if message belongs to current conversation
+          const receiverId = selectedConv.user1.id === user.id 
+            ? selectedConv.user2.id 
+            : selectedConv.user1.id;
+          
+          if (message.senderId === receiverId || message.receiverId === receiverId) {
+            setMessages(prev => [...prev, {
+              id: message.id || Date.now(),
+              content: message.content,
+              senderId: message.senderId,
+              receiverId: message.receiverId,
+              timestamp: message.timestamp || new Date().toISOString()
+            }]);
+          }
+        }
+      },
+      onOpen: () => console.log('Messages WebSocket connected'),
+      onClose: () => console.log('Messages WebSocket disconnected'),
+      onError: (error) => console.error('Messages WebSocket error:', error)
+    }
+  );
 
   // Lấy danh sách hội thoại
   useEffect(() => {
@@ -86,7 +118,19 @@ export default function Messages() {
           ? selectedConv.user2.id
           : selectedConv.user1.id;
       
+      // Send via API
       await sendMessage(receiverId, input);
+      
+      // Also send via WebSocket for real-time delivery
+      if (isConnected) {
+        sendWsMessage({
+          type: 'message',
+          receiverId: receiverId,
+          content: input,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
       setInput("");
       
       // Reload messages

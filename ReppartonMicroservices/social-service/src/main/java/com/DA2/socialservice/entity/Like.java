@@ -1,25 +1,20 @@
 package com.DA2.socialservice.entity;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "likes")
+@Document(collection = "likes")
 public class Like {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @Column(nullable = false)
     private String userId;
 
-    @Column(nullable = false)
     private String itemId; // song, post, comment, etc.
 
-    @Column(nullable = false)
     private String itemType; // "song", "post", "comment"
 
-    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     public Like() {

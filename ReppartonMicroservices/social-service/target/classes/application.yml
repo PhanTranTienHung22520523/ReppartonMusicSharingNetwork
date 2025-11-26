@@ -1,9 +1,23 @@
 spring:
   application:
     name: social-service
+  # MongoDB Configuration
   data:
     mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27017/repparton_social}
+      uri: ${MONGODB_URI:mongodb+srv://hpdariteriiii:Hp31032004@repparton.82qvi0m.mongodb.net/repparton_social?retryWrites=true&w=majority&appName=Repparton}
+  # PostgreSQL for Analytics (optional)
+  # datasource:
+  #   url: ${POSTGRES_URL:jdbc:postgresql://localhost:5432/repparton_analytics}
+  #   username: ${POSTGRES_USER:postgres}
+  #   password: ${POSTGRES_PASSWORD:hp31032004}
+  #   driver-class-name: org.postgresql.Driver
+  # jpa:
+  #   hibernate:
+  #     ddl-auto: validate
+  #   show-sql: false
+  #   properties:
+  #     hibernate:
+  #       dialect: org.hibernate.dialect.PostgreSQLDialect
 
 server:
   port: ${SERVER_PORT:8083}

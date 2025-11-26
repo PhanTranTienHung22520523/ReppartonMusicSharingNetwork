@@ -51,15 +51,13 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     setLoading(true);
     try {
+      // Real backend authentication
       const userData = await authApi.login(email, password);
-      if (userData && userData.token) {
-        setUser(userData);
-        localStorage.setItem("user", JSON.stringify(userData));
-        localStorage.setItem("lastAuthCheck", Date.now().toString());
-        return userData;
-      } else {
-        throw new Error("Invalid login response");
-      }
+      
+      setUser(userData);
+      localStorage.setItem("user", JSON.stringify(userData));
+      localStorage.setItem("lastAuthCheck", Date.now().toString());
+      return userData;
     } catch (error) {
       console.error("Login error:", error);
       throw error;
@@ -77,15 +75,36 @@ export function AuthProvider({ children }) {
       setUser(null);
       localStorage.removeItem("user");
       localStorage.removeItem("lastAuthCheck");
+      
+      // Reset to guest theme and navigate to home
+      const guestSettings = {
+        theme: "light",
+        audio: { quality: "high", autoplay: true, crossfade: false, volume: 75, fadeInDuration: 3 },
+        notifications: { likes: true, comments: true, followers: true, newMusic: true, email: false, push: true },
+        privacy: { publicProfile: true, showActivity: true, publicPlaylists: true, whoCanMsg: "everyone" },
+        interface: { showWaveform: true, showLyrics: true, compactMode: false, animationsEnabled: true }
+      };
+      localStorage.setItem("appSettings_guest", JSON.stringify(guestSettings));
+      document.documentElement.setAttribute('data-theme', 'light');
+      
+      // Navigate to home
+      window.location.href = '/';
     }
   };
 
   const register = async (data) => {
     setLoading(true);
     try {
+      // Real backend registration (auto login after success)
       const userData = await authApi.register(data);
+      
       setUser(userData);
+      localStorage.setItem("user", JSON.stringify(userData));
+      localStorage.setItem("lastAuthCheck", Date.now().toString());
       return userData;
+    } catch (error) {
+      console.error("Register error:", error);
+      throw error;
     } finally {
       setLoading(false);
     }

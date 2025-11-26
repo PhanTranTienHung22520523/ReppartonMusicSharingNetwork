@@ -1,18 +1,6 @@
-const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL}/stories`;
+import { API_ENDPOINTS, getAuthToken } from '../config/api.config';
 
-// Get user token from localStorage
-const getAuthToken = () => {
-  const userData = localStorage.getItem("userData");
-  if (userData) {
-    try {
-      const user = JSON.parse(userData);
-      return user.token;
-    } catch (error) {
-      console.error("Error parsing user data:", error);
-    }
-  }
-  return null;
-};
+const API_BASE_URL = API_ENDPOINTS.stories;
 
 // Create story
 export const createStory = async (storyData) => {

@@ -3,6 +3,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useSettings } from "../contexts/SettingsContext";
 import { useNavigate } from "react-router-dom";
 import { useRef, useState, useEffect } from "react";
+import "./MusicPlayerBar.css";
 
 export default function MusicPlayerBar() {
   const { currentSong, playing, setPlaying, playNext, playPrev, playRandom, currentTime, setCurrentTime } = useMusicPlayer();
@@ -52,27 +53,32 @@ export default function MusicPlayerBar() {
 
   return (
     <div
-      className="music-player-bar d-flex align-items-center justify-content-between px-4 bg-white shadow-lg"
+      className="music-player-bar"
       style={{
         position: "fixed",
         left: 0,
         right: 0,
         bottom: 0,
-        height: 80,
+        height: 90,
         zIndex: 999,
         userSelect: "none",
-        minWidth: 900
+        background: "var(--surface-color)",
+        borderTop: "1px solid var(--border-color)",
+        backdropFilter: "blur(10px)",
+        display: "grid",
+        gridTemplateColumns: "1fr 2fr 1fr",
+        alignItems: "center",
+        padding: "0 16px",
+        gap: "16px"
       }}
     >
-      {/* Cover + info */}
+      {/* Left: Song Info */}
       <div
         className="d-flex align-items-center"
         style={{ 
-          cursor: "pointer", 
-          minWidth: 250,
-          maxWidth: 250,
-          width: 250,
-          overflow: "hidden"
+          cursor: "pointer",
+          minWidth: 0,
+          gap: 12
         }}
         onClick={() => navigate("/listen")}
       >
@@ -82,82 +88,206 @@ export default function MusicPlayerBar() {
           style={{
             width: 56,
             height: 56,
-            borderRadius: 8,
+            borderRadius: 4,
             objectFit: "cover",
-            marginRight: 16,
-            flexShrink: 0
+            flexShrink: 0,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.3)"
           }}
         />
         <div style={{ minWidth: 0, flex: 1 }}>
           <div
-            className="fw-bold text-truncate"
-            style={{ color: "#6f42c1" }}
+            className="text-truncate"
+            style={{ 
+              color: "var(--text-color)", 
+              fontSize: 14,
+              fontWeight: 400,
+              marginBottom: 4
+            }}
           >
             {currentSong.title}
           </div>
           <div
-            className="text-muted text-truncate"
-            style={{ fontSize: 14 }}
+            className="text-truncate"
+            style={{ 
+              fontSize: 11, 
+              color: "var(--text-muted)"
+            }}
           >
             {currentSong.artist?.username || currentSong.artistName}
           </div>
         </div>
+        {user && (
+          <button
+            className="btn btn-sm"
+            style={{ 
+              width: 28,
+              height: 28,
+              padding: 0,
+              background: "transparent",
+              color: liked ? "#1db954" : "var(--text-muted)",
+              border: "none",
+              transition: "all 0.2s ease",
+              fontSize: 16
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setLiked((l) => !l);
+            }}
+            title="Like"
+          >
+            <i className={`bi ${liked ? "bi-heart-fill" : "bi-heart"}`}></i>
+          </button>
+        )}
       </div>
 
-      {/* Player controls */}
+      {/* Center: Controls + Timeline */}
       <div 
         className="d-flex flex-column align-items-center" 
         style={{ 
-          minWidth: 400,
-          maxWidth: 400,
-          width: 400
+          maxWidth: 722,
+          width: "100%"
         }}
       >
-        <div className="d-flex align-items-center gap-2 mb-1">
+        <div className="d-flex align-items-center justify-content-center gap-2 mb-2">
           <button
-            className={`btn btn-light btn-sm ${shuffle ? "text-primary" : ""}`}
-            style={{ borderRadius: "50%" }}
+            className="btn"
+            style={{ 
+              width: 32,
+              height: 32,
+              padding: 0,
+              background: "transparent",
+              color: shuffle ? "#1db954" : "var(--text-muted)",
+              border: "none",
+              transition: "all 0.15s ease",
+              fontSize: 16,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}
             onClick={() => setShuffle((s) => !s)}
             title="Shuffle"
+            onMouseEnter={(e) => {
+              if (!shuffle) e.currentTarget.style.color = "var(--text-color)";
+              e.currentTarget.style.transform = "scale(1.08)";
+            }}
+            onMouseLeave={(e) => {
+              if (!shuffle) e.currentTarget.style.color = "var(--text-muted)";
+              e.currentTarget.style.transform = "scale(1)";
+            }}
           >
             <i className="bi bi-shuffle"></i>
           </button>
           <button
-            className="btn btn-light btn-sm"
-            style={{ borderRadius: "50%" }}
+            className="btn"
+            style={{ 
+              width: 32,
+              height: 32,
+              padding: 0,
+              background: "transparent",
+              color: "var(--text-muted)",
+              border: "none",
+              transition: "all 0.15s ease",
+              fontSize: 20,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}
             title="Previous"
             onClick={playPrev}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "var(--text-color)";
+              e.currentTarget.style.transform = "scale(1.08)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "var(--text-muted)";
+              e.currentTarget.style.transform = "scale(1)";
+            }}
           >
             <i className="bi bi-skip-start-fill"></i>
           </button>
           <button
-            className="btn btn-primary btn-sm"
-            style={{ borderRadius: "50%", width: 40, height: 40, fontSize: 20 }}
+            className="btn"
+            style={{ 
+              borderRadius: "50%", 
+              width: 32, 
+              height: 32, 
+              padding: 0,
+              fontSize: 16,
+              background: "#fff",
+              color: "#000",
+              border: "none",
+              transition: "all 0.15s ease",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}
             onClick={() => setPlaying((p) => !p)}
             title={playing ? "Pause" : "Play"}
+            onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.06)"}
+            onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
           >
-            <i className={`bi ${playing ? "bi-pause-fill" : "bi-play-fill"}`}></i>
+            <i className={`bi ${playing ? "bi-pause-fill" : "bi-play-fill"}`} style={{ marginLeft: playing ? 0 : 2 }}></i>
           </button>
           <button
-            className="btn btn-light btn-sm"
-            style={{ borderRadius: "50%" }}
+            className="btn"
+            style={{ 
+              width: 32,
+              height: 32,
+              padding: 0,
+              background: "transparent",
+              color: "var(--text-muted)",
+              border: "none",
+              transition: "all 0.15s ease",
+              fontSize: 20,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}
             title="Next"
             onClick={() => (shuffle ? playRandom() : playNext())}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "var(--text-color)";
+              e.currentTarget.style.transform = "scale(1.08)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "var(--text-muted)";
+              e.currentTarget.style.transform = "scale(1)";
+            }}
           >
             <i className="bi bi-skip-end-fill"></i>
           </button>
           <button
-            className={`btn btn-light btn-sm ${repeat ? "text-primary" : ""}`}
-            style={{ borderRadius: "50%" }}
+            className="btn"
+            style={{ 
+              width: 32,
+              height: 32,
+              padding: 0,
+              background: "transparent",
+              color: repeat ? "#1db954" : "var(--text-muted)",
+              border: "none",
+              transition: "all 0.15s ease",
+              fontSize: 16,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}
             onClick={() => setRepeat((r) => !r)}
             title="Repeat"
+            onMouseEnter={(e) => {
+              if (!repeat) e.currentTarget.style.color = "var(--text-color)";
+              e.currentTarget.style.transform = "scale(1.08)";
+            }}
+            onMouseLeave={(e) => {
+              if (!repeat) e.currentTarget.style.color = "var(--text-muted)";
+              e.currentTarget.style.transform = "scale(1)";
+            }}
           >
             <i className="bi bi-repeat"></i>
           </button>
         </div>
         {/* Timeline */}
         <div className="d-flex align-items-center w-100" style={{ gap: 8 }}>
-          <span style={{ fontSize: 14, minWidth: 40 }}>{formatTime(current)}</span>
+          <span style={{ fontSize: 11, minWidth: 40, color: "var(--text-muted)", textAlign: "right" }}>{formatTime(current)}</span>
           <input
             type="range"
             min={0}
@@ -168,49 +298,88 @@ export default function MusicPlayerBar() {
               setCurrentTime(Number(e.target.value));
               if (audioRef.current) audioRef.current.currentTime = Number(e.target.value);
             }}
-            style={{ flex: 1 }}
+            className="music-timeline"
+            style={{ 
+              flex: 1,
+              background: `linear-gradient(to right, #1db954 0%, #1db954 ${duration > 0 ? (current / duration) * 100 : 0}%, rgba(255,255,255,0.3) ${duration > 0 ? (current / duration) * 100 : 0}%, rgba(255,255,255,0.3) 100%)`
+            }}
           />
-          <span style={{ fontSize: 14, minWidth: 40 }}>{formatTime(duration)}</span>
+          <span style={{ fontSize: 11, minWidth: 40, color: "var(--text-muted)" }}>{formatTime(duration)}</span>
         </div>
       </div>
 
-      {/* Like, share, playlist, volume */}
+      {/* Right: Actions */}
       <div 
-        className="d-flex align-items-center gap-2" 
+        className="d-flex align-items-center justify-content-end" 
         style={{ 
-          minWidth: 250,
-          maxWidth: 250,
-          width: 250,
-          justifyContent: "flex-end"
+          gap: 8,
+          minWidth: 180
         }}
       >
         {user && (
-          <button
-            className={`btn btn-light btn-sm ${liked ? "text-danger" : ""}`}
-            style={{ borderRadius: "50%" }}
-            onClick={() => setLiked((l) => !l)}
-            title="Yêu thích"
+          <button 
+            className="btn" 
+            style={{ 
+              width: 32,
+              height: 32,
+              padding: 0,
+              background: "transparent",
+              color: "var(--text-muted)",
+              border: "none",
+              transition: "all 0.15s ease",
+              fontSize: 16,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }} 
+            title="Add to playlist"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "var(--text-color)";
+              e.currentTarget.style.transform = "scale(1.08)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "var(--text-muted)";
+              e.currentTarget.style.transform = "scale(1)";
+            }}
           >
-            <i className={`bi ${liked ? "bi-heart-fill" : "bi-heart"}`}></i>
+            <i className="bi bi-plus-square"></i>
           </button>
         )}
-        <button className="btn btn-light btn-sm" style={{ borderRadius: "50%" }} title="Chia sẻ">
-          <i className="bi bi-share"></i>
-        </button>
-        {user && (
-          <button className="btn btn-light btn-sm" style={{ borderRadius: "50%" }} title="Thêm vào playlist">
-            <i className="bi bi-music-note-list"></i>
+        <div className="d-flex align-items-center" style={{ gap: 8 }}>
+          <button
+            className="btn"
+            style={{ 
+              width: 32,
+              height: 32,
+              padding: 0,
+              background: "transparent",
+              color: "var(--text-muted)",
+              border: "none",
+              transition: "all 0.15s ease",
+              fontSize: 16,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}
+            title="Volume"
+            onMouseEnter={(e) => e.currentTarget.style.color = "var(--text-color)"}
+            onMouseLeave={(e) => e.currentTarget.style.color = "var(--text-muted)"}
+          >
+            <i className={`bi bi-volume-${volume > 50 ? 'up' : volume > 0 ? 'down' : 'mute'}-fill`}></i>
           </button>
-        )}
-        <i className="bi bi-volume-up ms-2 me-1"></i>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={volume}
-          onChange={(e) => updateSetting('audio', 'volume', Number(e.target.value))}
-          style={{ width: 80 }}
-        />
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={volume}
+            onChange={(e) => updateSetting('audio', 'volume', Number(e.target.value))}
+            className="volume-slider"
+            style={{ 
+              width: 93,
+              background: `linear-gradient(to right, #1db954 0%, #1db954 ${volume}%, rgba(255,255,255,0.3) ${volume}%, rgba(255,255,255,0.3) 100%)`
+            }}
+          />
+        </div>
       </div>
 
       {/* Audio element */}

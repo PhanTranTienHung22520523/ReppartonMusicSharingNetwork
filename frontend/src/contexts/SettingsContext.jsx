@@ -3,10 +3,13 @@ import { createContext, useContext, useState, useEffect } from "react";
 const SettingsContext = createContext();
 
 export function SettingsProvider({ children }) {
-  // Load settings from localStorage
+  // Load settings from localStorage based on user
   const loadSettings = () => {
     try {
-      const saved = localStorage.getItem("appSettings");
+      const user = JSON.parse(localStorage.getItem("user") || "null");
+      const userId = user?.id || "guest";
+      const settingsKey = `appSettings_${userId}`;
+      const saved = localStorage.getItem(settingsKey);
       if (saved) {
         return JSON.parse(saved);
       }
@@ -14,7 +17,7 @@ export function SettingsProvider({ children }) {
       console.error("Error loading settings:", error);
     }
     
-    // Default settings
+    // Default settings (guest theme is light)
     return {
       theme: "light",
       audio: {
@@ -51,7 +54,14 @@ export function SettingsProvider({ children }) {
 
   // Save settings to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem("appSettings", JSON.stringify(settings));
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "null");
+      const userId = user?.id || "guest";
+      const settingsKey = `appSettings_${userId}`;
+      localStorage.setItem(settingsKey, JSON.stringify(settings));
+    } catch (error) {
+      console.error("Error saving settings:", error);
+    }
     
     // Apply theme to document
     document.documentElement.setAttribute('data-theme', settings.theme);
@@ -105,10 +115,40 @@ export function SettingsProvider({ children }) {
     }));
   };
 
-  // Reset settings to default
+  // Reset settings to default (for guest)
   const resetSettings = () => {
-    localStorage.removeItem("appSettings");
-    setSettings(loadSettings());
+    const guestSettings = {
+      theme: "light",
+      audio: {
+        quality: "high",
+        autoplay: true,
+        crossfade: false,
+        volume: 75,
+        fadeInDuration: 3,
+      },
+      notifications: {
+        likes: true,
+        comments: true,
+        followers: true,
+        newMusic: true,
+        email: false,
+        push: true,
+      },
+      privacy: {
+        publicProfile: true,
+        showActivity: true,
+        publicPlaylists: true,
+        whoCanMsg: "everyone",
+      },
+      interface: {
+        showWaveform: true,
+        showLyrics: true,
+        compactMode: false,
+        animationsEnabled: true,
+      }
+    };
+    setSettings(guestSettings);
+    localStorage.setItem("appSettings_guest", JSON.stringify(guestSettings));
   };
 
   return (

@@ -16,6 +16,12 @@ public class Post {
     private int likes = 0;
     private int shares = 0;
     private int comments = 0;
+
+    // Location check-in fields
+    private String locationName; // e.g., "Ho Chi Minh City, Vietnam"
+    private Double latitude;
+    private Double longitude;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -144,5 +150,30 @@ public class Post {
         if (this.comments > 0) {
             this.comments--;
         }
+    }
+
+    // Location getters and setters
+    public String getLocationName() {
+        return locationName;
+    }
+
+    public void setLocationName(String locationName) {
+        this.locationName = locationName;
+    }
+
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
     }
 }

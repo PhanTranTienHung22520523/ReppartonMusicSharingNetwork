@@ -21,6 +21,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final ArtistVerificationAIService verificationAIService;
+    private final DeviceService deviceService;
+    private final UserAnalyticsService userAnalyticsService;
 
     public Map<String, Object> login(LoginRequest request) {
         User user = userRepository.findByUsername(request.getUsernameOrEmail())
@@ -33,6 +35,21 @@ public class AuthService {
 
         String accessToken = jwtUtil.generateToken(user.getId(), user.getUsername());
         String refreshToken = jwtUtil.generateRefreshToken(user.getId());
+
+        // Record device login for security monitoring
+        if (request.getDeviceId() != null) {
+            deviceService.recordDeviceLogin(
+                user.getId(),
+                request.getDeviceId(),
+                request.getDeviceName(),
+                request.getUserAgent(),
+                request.getIpAddress(),
+                accessToken // Use access token as session ID
+            );
+        }
+
+        // Track user login event
+        userAnalyticsService.trackLoginEvent(user.getId(), request.getIpAddress(), request.getDeviceId());
 
         Map<String, Object> response = new HashMap<>();
         response.put("accessToken", accessToken);

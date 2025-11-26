@@ -1,9 +1,12 @@
+server:
+  port: 8082
+
 spring:
   application:
     name: song-service
   data:
     mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27017/repparton_songs}
+      uri: ${MONGODB_URI:mongodb+srv://hpdariteriiii:Hp31032004@repparton.82qvi0m.mongodb.net/repparton_songs?retryWrites=true&w=majority&appName=Repparton}
   servlet:
     multipart:
       max-file-size: ${UPLOAD_MAX_FILE_SIZE:100MB}
@@ -26,3 +29,8 @@ management:
 logging:
   level:
     com.DA2.songservice: DEBUG
+
+# AI Service Configuration
+ai:
+  service:
+    url: ${AI_SERVICE_URL:http://localhost:5000}

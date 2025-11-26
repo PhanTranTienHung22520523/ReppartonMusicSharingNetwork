@@ -1,0 +1,17 @@
+{
+  "name": "reparton-analytics-migration",
+  "version": "1.0.0",
+  "description": "Migration script to move analytics data from MongoDB to PostgreSQL",
+  "main": "migrate_analytics.js",
+  "scripts": {
+    "migrate": "node migrate_analytics.js",
+    "test": "echo \"No tests specified\""
+  },
+  "dependencies": {
+    "mongodb": "^6.0.0",
+    "pg": "^8.11.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

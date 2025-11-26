@@ -1,4 +1,6 @@
-const API_URL = `${import.meta.env.VITE_API_BASE_URL}/songs`;
+import { API_ENDPOINTS } from '../config/api.config';
+
+const API_URL = API_ENDPOINTS.songs;
 
 // Lấy danh sách bài hát nghe gần đây của user (với pagination)
 export async function getRecentSongs(userId, limit = 10, page = 0) {

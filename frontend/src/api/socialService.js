@@ -1,23 +1,7 @@
-// Get auth token from localStorage
-const getAuthToken = () => {
-  const user = localStorage.getItem("user");
-  return user ? JSON.parse(user).token : null;
-};
-
-// Create headers with auth token
-const createHeaders = (includeAuth = false) => {
-  const headers = { "Content-Type": "application/json" };
-  if (includeAuth) {
-    const token = getAuthToken();
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-  }
-  return headers;
-};
+import { API_ENDPOINTS, getAuthToken, createHeaders } from '../config/api.config';
 
 // ========== POSTS API ==========
-const POSTS_API_URL = `${import.meta.env.VITE_API_BASE_URL}/posts`;
+const POSTS_API_URL = API_ENDPOINTS.posts;
 
 // Get all posts
 export async function getAllPosts(page = 0, size = 20) {

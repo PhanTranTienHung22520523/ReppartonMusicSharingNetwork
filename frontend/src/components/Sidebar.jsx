@@ -5,6 +5,7 @@ const menu = [
   { label: "Home", path: "/", icon: "bi bi-house", auth: false },
   { label: "Discover", path: "/discover", icon: "bi bi-compass", auth: false },
   { label: "Search", path: "/search", icon: "bi bi-search", auth: false },
+  { label: "Recommendations", path: "/recommendations", icon: "bi bi-stars", auth: false },
   { label: "Messages", path: "/messages", icon: "bi bi-chat", auth: true, role: "ARTIST" },
   { label: "Playlist", path: "/playlist", icon: "bi bi-music-note-list", auth: true },
   { label: "Profile", path: "/profile", icon: "bi bi-person", auth: true },

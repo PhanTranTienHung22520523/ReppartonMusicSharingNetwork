@@ -23,12 +23,32 @@ public class PostService {
     @Autowired
     private PostLikeRepository postLikeRepository;
 
+    @Autowired
+    private LocationService locationService;
+
     // Create post
     @Transactional
     public Post createPost(Post post) {
         if (post.getContent() == null || post.getContent().trim().isEmpty()) {
             throw new RuntimeException("Post content cannot be empty");
         }
+
+        // Handle location check-in
+        if (post.getLatitude() != null && post.getLongitude() != null) {
+            // Reverse geocode coordinates to get location name
+            if (post.getLocationName() == null) {
+                String locationName = locationService.reverseGeocode(post.getLatitude(), post.getLongitude());
+                post.setLocationName(locationName);
+            }
+        } else if (post.getLocationName() != null && !post.getLocationName().trim().isEmpty()) {
+            // Geocode location name to get coordinates
+            var coordinates = locationService.geocode(post.getLocationName());
+            if (coordinates != null) {
+                post.setLatitude(coordinates.get("latitude"));
+                post.setLongitude(coordinates.get("longitude"));
+            }
+        }
+
         post.setCreatedAt(LocalDateTime.now());
         return postRepository.save(post);
     }
@@ -170,6 +190,31 @@ public class PostService {
         stats.setComments(post.getComments());
         
         return stats;
+    }
+
+    // Search posts by location
+    public Page<Post> searchPostsByLocation(String locationQuery, Pageable pageable) {
+        return postRepository.findByLocationNameContainingIgnoreCaseOrderByCreatedAtDesc(locationQuery, pageable);
+    }
+
+    // Get posts near a location
+    public List<Post> getPostsNearLocation(Double latitude, Double longitude, Double radiusKm, Pageable pageable) {
+        // For MongoDB, we'll need to implement geospatial queries
+        // For now, return all posts with location (simplified implementation)
+        Page<Post> postsPage = postRepository.findByLatitudeNotNullAndLongitudeNotNull(pageable);
+        List<Post> postsWithLocation = postsPage.getContent();
+
+        // Filter by distance (this should be done in database for performance)
+        return postsWithLocation.stream()
+                .filter(post -> {
+                    if (post.getLatitude() == null || post.getLongitude() == null) {
+                        return false;
+                    }
+                    double distance = locationService.calculateDistance(
+                        latitude, longitude, post.getLatitude(), post.getLongitude());
+                    return distance <= radiusKm;
+                })
+                .toList();
     }
 
     // Inner class for statistics

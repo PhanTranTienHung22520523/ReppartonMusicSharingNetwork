@@ -3,7 +3,22 @@ spring:
     name: user-service
   data:
     mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27017/repparton_users}
+      uri: ${MONGODB_URI:mongodb+srv://hpdariteriiii:Hp31032004@repparton.82qvi0m.mongodb.net/repparton_users?retryWrites=true&w=majority&appName=Repparton}
+  datasource:
+    url: ${POSTGRES_URL:jdbc:postgresql://localhost:5432/repparton_analytics}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:hp31032004}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
 
 server:
   port: ${SERVER_PORT:8081}

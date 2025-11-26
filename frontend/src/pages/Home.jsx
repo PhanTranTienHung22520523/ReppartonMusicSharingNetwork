@@ -6,6 +6,8 @@ import SongCard from "../components/SongCard";
 import Stories from "../components/Stories";
 import { getUserFeed, getAllPublicPosts, createPost } from "../api/postService";
 import { getAllSongs } from "../api/songService";
+import { getPersonalizedRecommendations } from "../api/recommendationService";
+import { getTrendingSongs } from "../api/analyticsService";
 import { 
   FaImage, 
   FaMusic, 
@@ -13,7 +15,8 @@ import {
   FaChartLine, 
   FaFire,
   FaPlus,
-  FaPlay
+  FaPlay,
+  FaMagic
 } from "react-icons/fa";
 
 export default function Home() {
@@ -40,10 +43,16 @@ export default function Home() {
           setPosts(publicData.content || []);
         }
 
-        // Load songs
-        const songsData = await getAllSongs();
-        setTrendingSongs(songsData.content || []);
-        setRecommendedSongs(songsData.content || []);
+        // Load songs - use real backend APIs
+        const [trending, recommended] = await Promise.all([
+          getTrendingSongs(20).catch(() => getAllSongs().then(data => data.content || [])),
+          isAuthenticated() 
+            ? getPersonalizedRecommendations(20).catch(() => [])
+            : getAllSongs().then(data => data.content || [])
+        ]);
+        
+        setTrendingSongs(trending || []);
+        setRecommendedSongs(recommended || []);
       } catch (error) {
         console.error("Failed to load data:", error);
         // Set mock data for development
@@ -344,13 +353,13 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Recommended for You */}
+          {/* AI Recommended for You */}
           {user && recommendedSongs.length > 0 && (
             <div className="card fade-in">
               <div className="card-body">
                 <h6 className="fw-bold mb-3">
-                  <FaMusic className="me-2 text-primary-custom" size={16} />
-                  Recommended for You
+                  <FaMagic className="me-2 text-primary-custom" size={16} />
+                  AI Recommended for You
                 </h6>
                 
                 <div className="d-flex flex-column gap-3">

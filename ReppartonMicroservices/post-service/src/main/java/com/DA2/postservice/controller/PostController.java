@@ -265,4 +265,39 @@ public class PostController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+
+    // Search posts by location name
+    @GetMapping("/search/location")
+    public ResponseEntity<?> searchPostsByLocation(
+            @RequestParam String query,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size);
+            Page<Post> posts = postService.searchPostsByLocation(query, pageable);
+            return ResponseEntity.ok(posts);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // Get posts near location
+    @GetMapping("/nearby")
+    public ResponseEntity<?> getPostsNearLocation(
+            @RequestParam Double latitude,
+            @RequestParam Double longitude,
+            @RequestParam(defaultValue = "10.0") Double radiusKm,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size);
+            List<Post> posts = postService.getPostsNearLocation(latitude, longitude, radiusKm, pageable);
+            return ResponseEntity.ok(Map.of(
+                "posts", posts,
+                "total", posts.size()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 }

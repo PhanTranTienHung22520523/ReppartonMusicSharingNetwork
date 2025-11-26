@@ -16,6 +16,8 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [passwordStrength, setPasswordStrength] = useState({ score: 0, label: '', color: '' });
   const navigate = useNavigate();
 
   // Redirect if already logged in
@@ -25,25 +27,116 @@ export default function Register() {
     }
   }, [user, navigate]);
 
+  // Password strength calculator
+  const calculatePasswordStrength = (password) => {
+    if (!password) return { score: 0, label: '', color: '' };
+    
+    let score = 0;
+    if (password.length >= 8) score++;
+    if (password.length >= 12) score++;
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+    
+    if (score <= 1) return { score, label: 'Yếu', color: '#e74c3c' };
+    if (score <= 3) return { score, label: 'Trung bình', color: '#f39c12' };
+    return { score, label: 'Mạnh', color: '#27ae60' };
+  };
+
+  // Validation functions
+  const validateField = (name, value) => {
+    const errors = { ...fieldErrors };
+    
+    switch (name) {
+      case 'email':
+        if (!value) {
+          errors.email = 'Email không được để trống';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          errors.email = 'Email không hợp lệ';
+        } else {
+          delete errors.email;
+        }
+        break;
+      
+      case 'username':
+        if (!value) {
+          errors.username = 'Tên người dùng không được để trống';
+        } else if (value.length < 3) {
+          errors.username = 'Tên người dùng phải có ít nhất 3 ký tự';
+        } else if (!/^[a-zA-Z0-9_]+$/.test(value)) {
+          errors.username = 'Tên người dùng chỉ được chứa chữ, số và dấu gạch dưới';
+        } else {
+          delete errors.username;
+        }
+        break;
+      
+      case 'fullName':
+        if (!value) {
+          errors.fullName = 'Họ tên không được để trống';
+        } else if (value.length < 2) {
+          errors.fullName = 'Họ tên phải có ít nhất 2 ký tự';
+        } else {
+          delete errors.fullName;
+        }
+        break;
+      
+      case 'password':
+        if (!value) {
+          errors.password = 'Mật khẩu không được để trống';
+        } else if (value.length < 6) {
+          errors.password = 'Mật khẩu phải có ít nhất 6 ký tự';
+        } else {
+          delete errors.password;
+        }
+        setPasswordStrength(calculatePasswordStrength(value));
+        break;
+      
+      case 'confirmPassword':
+        if (!value) {
+          errors.confirmPassword = 'Vui lòng xác nhận mật khẩu';
+        } else if (value !== form.password) {
+          errors.confirmPassword = 'Mật khẩu không khớp';
+        } else {
+          delete errors.confirmPassword;
+        }
+        break;
+    }
+    
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm(f => ({
       ...f,
       [name]: value,
     }));
+    
+    // Real-time validation
+    if (fieldErrors[name]) {
+      validateField(name, value);
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    validateField(name, value);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     
-    if (form.password !== form.confirmPassword) {
-      setError("Mật khẩu không khớp!");
-      return;
-    }
+    // Validate all fields
+    const isEmailValid = validateField('email', form.email);
+    const isUsernameValid = validateField('username', form.username);
+    const isFullNameValid = validateField('fullName', form.fullName);
+    const isPasswordValid = validateField('password', form.password);
+    const isConfirmPasswordValid = validateField('confirmPassword', form.confirmPassword);
     
-    if (form.password.length < 6) {
-      setError("Mật khẩu phải có ít nhất 6 ký tự!");
+    if (!isEmailValid || !isUsernameValid || !isFullNameValid || !isPasswordValid || !isConfirmPasswordValid) {
+      setError("Vui lòng kiểm tra lại thông tin đăng ký");
       return;
     }
     
@@ -120,10 +213,11 @@ export default function Register() {
                       </span>
                       <input
                         type="text"
-                        className="form-control border-0"
+                        className={`form-control border-0 ${fieldErrors.fullName ? 'is-invalid' : ''}`}
                         name="fullName"
                         value={form.fullName}
                         onChange={handleChange}
+                        onBlur={handleBlur}
                         placeholder="Nhập họ và tên"
                         required
                         style={{
@@ -132,6 +226,9 @@ export default function Register() {
                         }}
                       />
                     </div>
+                    {fieldErrors.fullName && (
+                      <small className="text-danger mt-1 d-block">{fieldErrors.fullName}</small>
+                    )}
                   </div>
 
                   {/* Username */}
@@ -145,10 +242,11 @@ export default function Register() {
                       </span>
                       <input
                         type="text"
-                        className="form-control border-0"
+                        className={`form-control border-0 ${fieldErrors.username ? 'is-invalid' : ''}`}
                         name="username"
                         value={form.username}
                         onChange={handleChange}
+                        onBlur={handleBlur}
                         placeholder="Nhập tên người dùng"
                         required
                         style={{
@@ -157,6 +255,9 @@ export default function Register() {
                         }}
                       />
                     </div>
+                    {fieldErrors.username && (
+                      <small className="text-danger mt-1 d-block">{fieldErrors.username}</small>
+                    )}
                   </div>
 
                   {/* Email */}
@@ -170,10 +271,11 @@ export default function Register() {
                       </span>
                       <input
                         type="email"
-                        className="form-control border-0"
+                        className={`form-control border-0 ${fieldErrors.email ? 'is-invalid' : ''}`}
                         name="email"
                         value={form.email}
                         onChange={handleChange}
+                        onBlur={handleBlur}
                         placeholder="Nhập email"
                         required
                         style={{
@@ -182,6 +284,9 @@ export default function Register() {
                         }}
                       />
                     </div>
+                    {fieldErrors.email && (
+                      <small className="text-danger mt-1 d-block">{fieldErrors.email}</small>
+                    )}
                   </div>
 
                   {/* Password */}
@@ -195,11 +300,12 @@ export default function Register() {
                       </span>
                       <input
                         type={showPassword ? "text" : "password"}
-                        className="form-control border-0"
+                        className={`form-control border-0 ${fieldErrors.password ? 'is-invalid' : ''}`}
                         name="password"
                         value={form.password}
                         onChange={handleChange}
-                        placeholder="Nhập mật khẩu"
+                        onBlur={handleBlur}
+                        placeholder="Nhập mật khẩu (ít nhất 6 ký tự)"
                         required
                         style={{
                           background: "#f8f9fa",
@@ -215,6 +321,25 @@ export default function Register() {
                         {showPassword ? <FaEyeSlash style={{ color: "#667eea" }} /> : <FaEye style={{ color: "#667eea" }} />}
                       </button>
                     </div>
+                    {fieldErrors.password && (
+                      <small className="text-danger mt-1 d-block">{fieldErrors.password}</small>
+                    )}
+                    {form.password && passwordStrength.label && (
+                      <div className="mt-2">
+                        <small style={{ color: passwordStrength.color, fontWeight: 500 }}>
+                          Độ mạnh: {passwordStrength.label}
+                        </small>
+                        <div className="progress mt-1" style={{ height: 4 }}>
+                          <div 
+                            className="progress-bar" 
+                            style={{ 
+                              width: `${(passwordStrength.score / 5) * 100}%`,
+                              background: passwordStrength.color
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Confirm Password */}
@@ -228,10 +353,11 @@ export default function Register() {
                       </span>
                       <input
                         type={showConfirmPassword ? "text" : "password"}
-                        className="form-control border-0"
+                        className={`form-control border-0 ${fieldErrors.confirmPassword ? 'is-invalid' : ''}`}
                         name="confirmPassword"
                         value={form.confirmPassword}
                         onChange={handleChange}
+                        onBlur={handleBlur}
                         placeholder="Nhập lại mật khẩu"
                         required
                         style={{
@@ -248,6 +374,9 @@ export default function Register() {
                         {showConfirmPassword ? <FaEyeSlash style={{ color: "#667eea" }} /> : <FaEye style={{ color: "#667eea" }} />}
                       </button>
                     </div>
+                    {fieldErrors.confirmPassword && (
+                      <small className="text-danger mt-1 d-block">{fieldErrors.confirmPassword}</small>
+                    )}
                   </div>
 
                   {/* Submit Button */}

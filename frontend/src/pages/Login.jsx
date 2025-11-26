@@ -16,6 +16,8 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const navigate = useNavigate();
 
   // Redirect if already logged in
@@ -25,16 +27,54 @@ export default function Login() {
     }
   }, [user, navigate]);
 
+  // Email validation
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) {
+      setEmailError("Email không được để trống");
+      return false;
+    }
+    if (!emailRegex.test(email)) {
+      setEmailError("Email không hợp lệ");
+      return false;
+    }
+    setEmailError("");
+    return true;
+  };
+
+  // Password validation
+  const validatePassword = (password) => {
+    if (!password) {
+      setPasswordError("Mật khẩu không được để trống");
+      return false;
+    }
+    if (password.length < 6) {
+      setPasswordError("Mật khẩu phải có ít nhất 6 ký tự");
+      return false;
+    }
+    setPasswordError("");
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    
+    // Validate inputs
+    const isEmailValid = validateEmail(email);
+    const isPasswordValid = validatePassword(password);
+    
+    if (!isEmailValid || !isPasswordValid) {
+      return;
+    }
+    
     setLoading(true);
     
     try {
       await login(email, password);
       navigate("/");
     } catch (err) {
-      setError(err.message || "Login failed. Please try again.");
+      setError(err.message || "Đăng nhập thất bại. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -98,10 +138,14 @@ export default function Login() {
                       </span>
                       <input 
                         type="email" 
-                        className="form-control border-0" 
+                        className={`form-control border-0 ${emailError ? 'is-invalid' : ''}`}
                         placeholder="Nhập email của bạn"
                         value={email}
-                        onChange={e => setEmail(e.target.value)} 
+                        onChange={e => {
+                          setEmail(e.target.value);
+                          if (emailError) validateEmail(e.target.value);
+                        }}
+                        onBlur={e => validateEmail(e.target.value)}
                         required 
                         autoFocus
                         style={{
@@ -110,6 +154,9 @@ export default function Login() {
                         }}
                       />
                     </div>
+                    {emailError && (
+                      <small className="text-danger mt-1 d-block">{emailError}</small>
+                    )}
                   </div>
 
                   {/* Password Field */}
@@ -123,10 +170,14 @@ export default function Login() {
                       </span>
                       <input 
                         type={showPassword ? "text" : "password"} 
-                        className="form-control border-0"
+                        className={`form-control border-0 ${passwordError ? 'is-invalid' : ''}`}
                         placeholder="Nhập mật khẩu"
                         value={password}
-                        onChange={e => setPassword(e.target.value)} 
+                        onChange={e => {
+                          setPassword(e.target.value);
+                          if (passwordError) validatePassword(e.target.value);
+                        }}
+                        onBlur={e => validatePassword(e.target.value)}
                         required
                         style={{
                           background: "#f8f9fa",
@@ -145,6 +196,9 @@ export default function Login() {
                         }
                       </button>
                     </div>
+                    {passwordError && (
+                      <small className="text-danger mt-1 d-block">{passwordError}</small>
+                    )}
                   </div>
 
                   {/* Submit Button */}
