@@ -162,6 +162,25 @@ export async function getPlaylistComments(playlistId, page = 0, size = 20) {
   }
 }
 
+// Get comment count for an item (song/post/playlist)
+export async function getCommentCount(itemId, type) {
+  try {
+    const params = new URLSearchParams({ itemId, type });
+    const res = await fetch(`${API_URL}/count?${params.toString()}`, {
+      headers: createHeaders(false),
+    });
+
+    if (!res.ok) {
+      throw new Error('Failed to fetch comment count');
+    }
+
+    const data = await res.json();
+    return typeof data?.count === 'number' ? data.count : 0;
+  } catch (error) {
+    throw new Error(error.message || 'Network error');
+  }
+}
+
 // Delete comment
 export async function deleteComment(commentId) {
   try {

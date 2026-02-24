@@ -23,8 +23,18 @@ export function LanguageProvider({ children }) {
     setLanguage((prev) => (prev === "en" ? "vi" : "en"));
   };
 
-  const t = (key) => {
-    return translations[language]?.[key] || key;
+  const t = (key, params = {}) => {
+    let translation = translations[language]?.[key] || key;
+
+    // Replace placeholders like {name} with actual values
+    if (params && typeof params === 'object') {
+      Object.keys(params).forEach(paramKey => {
+        const placeholder = `{${paramKey}}`;
+        translation = translation.replace(placeholder, params[paramKey]);
+      });
+    }
+
+    return translation;
   };
 
   const value = {
@@ -56,7 +66,7 @@ const translations = {
     "nav.genres": "Genres",
     "nav.analytics": "Analytics",
     "nav.history": "History",
-    
+
     // Auth
     "auth.signIn": "Sign In",
     "auth.signUp": "Sign Up",
@@ -68,7 +78,7 @@ const translations = {
     "auth.confirmPassword": "Confirm Password",
     "auth.username": "Username",
     "auth.fullName": "Full Name",
-    
+
     // Common
     "common.loading": "Loading...",
     "common.save": "Save",
@@ -85,7 +95,7 @@ const translations = {
     "common.showLess": "Show Less",
     "common.unreadNotifications": "unread",
     "common.allCaughtUp": "You're all caught up!",
-    
+
     // Settings
     "settings.title": "Settings",
     "settings.account": "Account",
@@ -156,7 +166,7 @@ const translations = {
     "settings.request": "Request",
     "settings.deleteAccount": "Delete Account",
     "settings.deleteAccountDesc": "Permanently delete your account and all data",
-    
+
     // Music
     "music.play": "Play",
     "music.pause": "Pause",
@@ -170,7 +180,7 @@ const translations = {
     "music.like": "Like",
     "music.unlike": "Unlike",
     "music.download": "Download",
-    
+
     // Social
     "social.follow": "Follow",
     "social.unfollow": "Unfollow",
@@ -181,7 +191,7 @@ const translations = {
     "social.reply": "Reply",
     "social.delete": "Delete",
     "social.report": "Report",
-    
+
     // Time
     "time.now": "Just now",
     "time.minutesAgo": "minutes ago",
@@ -190,13 +200,13 @@ const translations = {
     "time.weeksAgo": "weeks ago",
     "time.monthsAgo": "months ago",
     "time.yearsAgo": "years ago",
-    
+
     // Genres
     "genres.title": "Music Genres",
     "genres.trending": "Trending Now",
     "genres.all": "All Genres",
     "genres.songs": "songs",
-    
+
     // Analytics
     "analytics.title": "Analytics Dashboard",
     "analytics.totalPlays": "Total Plays",
@@ -204,7 +214,7 @@ const translations = {
     "analytics.topSongs": "Top Songs",
     "analytics.recentSearches": "Recent Searches",
     "analytics.listenHistory": "Listen History",
-    
+
     // History
     "history.title": "History",
     "history.listen": "Listen History",
@@ -212,7 +222,7 @@ const translations = {
     "history.clear": "Clear History",
     "history.noListenHistory": "No listen history yet",
     "history.noSearchHistory": "No search history yet",
-    
+
     // Home & Feed
     "home.title": "Home",
     "home.whatsOnYourMind": "What's on your mind?",
@@ -220,14 +230,43 @@ const translations = {
     "home.trendingSongs": "Trending Songs",
     "home.forYou": "For You",
     "home.stories": "Stories",
-    
+    "home.welcome": "Welcome back, {name}!",
+    "home.welcomeArtist": "Ready to share your latest creation with the world?",
+    "home.welcomeUser": "Discover new music and connect with artists you love.",
+    "home.exploreTrending": "Explore Trending",
+    "home.yourFeed": "Your Feed",
+    "home.latestPosts": "Latest Posts",
+    "home.trending": "Trending",
+    "home.noPosts": "No posts yet",
+    "home.noTrending": "No trending posts available",
+    "home.followHint": "Follow some artists to see their posts in your feed",
+    "home.signInHint": "Sign in to see personalized content",
+    "home.quickActions": "Quick Actions",
+    "home.createPlaylist": "Create Playlist",
+    "home.discoverMusic": "Discover Music",
+    "home.uploadTrack": "Upload Track",
+    "home.trendingNow": "Trending Now",
+    "home.seeAll": "See all",
+    "home.aiRecommended": "AI Recommended for You",
+    "home.post.photo": "Photo",
+    "home.post.music": "Music",
+    "home.post.feeling": "Feeling",
+    "home.post.submit": "Post",
+
+    // Navbar Extended
+    "nav.groups": "Groups",
+    "nav.admin": "Admin Dashboard",
+    "nav.devices": "Devices",
+    "nav.changePassword": "Change Password",
+
+
     // Discover
     "discover.title": "Discover",
     "discover.recent": "Recently Played",
     "discover.newest": "Newest Releases",
     "discover.mostViewed": "Most Popular",
     "discover.viewAll": "View All",
-    
+
     // Upload
     "upload.title": "Upload",
     "upload.song": "Upload Song",
@@ -241,7 +280,7 @@ const translations = {
     "upload.uploading": "Uploading...",
     "upload.success": "Upload successful!",
     "upload.error": "Upload failed",
-    
+
     // Profile
     "profile.posts": "Posts",
     "profile.followers": "Followers",
@@ -250,7 +289,19 @@ const translations = {
     "profile.songs": "Songs",
     "profile.playlists": "Playlists",
     "profile.about": "About",
-    
+    "profile.friends": "Friends",
+    "profile.friendsHint": "Friends are people who follow each other",
+    "profile.noPosts": "No posts yet.",
+    "profile.noFriends": "No friends yet.",
+    "profile.noSongs": "No songs yet.",
+    "profile.noPlaylists": "No playlists yet.",
+    "profile.pinnedGroups": "Pinned Groups",
+    "profile.viewAll": "View all",
+    "profile.locked": "Content Locked",
+    "profile.artistOnly": "Only Artist accounts can post songs",
+    "profile.contactAdmin": "Contact admin to upgrade your account to Artist",
+
+
     // Playlist
     "playlist.myPlaylists": "My Playlists",
     "playlist.create": "Create Playlist",
@@ -259,20 +310,176 @@ const translations = {
     "playlist.name": "Playlist Name",
     "playlist.public": "Public",
     "playlist.private": "Private",
-    
+
     // Messages
     "messages.title": "Messages",
     "messages.newMessage": "New Message",
     "messages.typeMessage": "Type a message...",
     "messages.send": "Send",
     "messages.noMessages": "No messages yet",
-    
+
     // Listen Page
     "listen.noSong": "No song selected",
     "listen.chooseSong": "Choose a song to start listening",
     "listen.about": "About this track",
     "listen.plays": "plays",
     "listen.addToPlaylist": "Add to Playlist",
+    "listen.tabInfo": "Info",
+    "listen.tabLyrics": "Lyrics",
+    "listen.tabAnalysis": "AI Analysis",
+    "listen.tabCover": "Cover",
+    "listen.metaArtist": "Artist",
+    "listen.metaDuration": "Duration",
+    "listen.metaPlays": "Plays",
+    "listen.metaReleased": "Released",
+    "listen.metaGenre": "Genre",
+    "listen.noDescription": "No description yet.",
+    "listen.lyricsTitle": "Lyrics",
+    "listen.loadingLyrics": "Loading lyrics...",
+    "listen.noLyrics": "No lyrics available for this song.",
+    "listen.syncedLyricsAvailable": "Synced lyrics available",
+    "listen.manageLyrics": "Manage Lyrics",
+    "listen.coverTitle": "Cover",
+    "listen.openCover": "Open cover",
+
+    // Admin Dashboard
+    "admin.title": "Admin Dashboard",
+    "admin.updatedAt": "Updated at",
+    "admin.refresh": "Refresh",
+    "admin.quickActions": "Quick Actions",
+    "admin.goToAdmin": "Go to admin page",
+    "admin.manageUsers": "Manage Users",
+    "admin.approveArtists": "Approve Artists",
+    "admin.analytics": "Admin Analytics",
+    "admin.reports": "Reports",
+    "admin.totalUsers": "Total Users",
+    "admin.totalAccounts": "Total accounts",
+    "admin.verified": "Verified",
+    "admin.verifiedDesc": "of total users",
+    "admin.banned": "Banned",
+    "admin.bannedAccounts": "Banned accounts",
+    "admin.totalArtists": "Total Artists",
+    "admin.roleArtist": "Role ARTIST",
+    "admin.pending": "Pending",
+    "admin.pendingArtists": "Pending artist profiles",
+    "admin.approved": "Approved",
+    "admin.approvedArtists": "Approved artist profiles",
+    "admin.rejected": "Rejected",
+    "admin.rejectedArtists": "Rejected artist profiles",
+    "admin.waiting": "waiting",
+
+    // Reports
+    "reports.management": "Report Management",
+    "reports.myReports": "My Reports",
+    "reports.allStatus": "All Status",
+    "reports.pending": "Pending",
+    "reports.resolved": "Resolved",
+    "reports.rejected": "Rejected",
+    "reports.table.type": "Type",
+    "reports.table.reason": "Reason",
+    "reports.table.description": "Description",
+    "reports.table.reporter": "Reporter",
+    "reports.table.date": "Date",
+    "reports.table.status": "Status",
+    "reports.table.actions": "Actions",
+    "reports.action.viewDetails": "View Details",
+    "reports.action.resolve": "Resolve",
+    "reports.action.reject": "Reject",
+    "reports.action.delete": "Delete Report",
+    "reports.confirmDelete": "Are you sure you want to delete this report? This action cannot be undone.",
+    "reports.deleteTitle": "Delete Report",
+    "reports.noReports": "No reports found",
+    "reports.empty": "There are no reports yet",
+    "reports.noReportsFilter": "No reports with status",
+    "reports.detailsTitle": "Report Details",
+    "reports.targetItem": "Target Item",
+    "reports.noDescription": "No additional details provided.",
+    "common.close": "Close",
+    "common.back": "Back",
+    "common.total": "Total",
+    "common.page": "Page",
+    "common.previous": "Previous",
+    "common.next": "Next",
+    "common.refresh": "Refresh",
+    "common.clear": "Clear",
+
+    // User Management Extended
+    "users.searchResult": "Search results: ",
+    "users.userList": "User list",
+    "users.filter.allStatus": "All Status",
+    "users.filter.verified": "Verified",
+    "users.filter.unverified": "Unverified",
+    "users.filter.allRoles": "All Roles",
+    "users.filter.perPage": "/page",
+    "users.noUsers": "No users found",
+    "users.banModal.title": "Ban User: ",
+    "users.banModal.reason": "Ban reason *",
+    "users.banModal.placeholder": "Enter ban reason...",
+    "users.banModal.submit": "Ban User",
+    "users.banModal.banning": "Banning...",
+
+    // Artist Approval Extended
+    "artists.searchPlaceholder": "Search username/email/stage name...",
+    "artists.tabs.pending": "Pending",
+    "artists.tabs.approved": "Approved",
+    "artists.tabs.rejected": "Rejected",
+    "artists.noArtists": "No artists found",
+    "artists.noArtistsMatch": "No matching artists found",
+    "artists.card.stageName": "Stage Name",
+    "artists.card.songCount": "Song Count",
+    "artists.card.viewDoc": "View Document",
+    "artists.card.social": "Social Media",
+    "artists.card.rejectionReason": "Rejection Reason",
+    "artists.card.approve": "Approve",
+    "artists.card.reject": "Reject",
+    "artists.card.approved": "Approved",
+    "artists.card.rejected": "Rejected",
+    "artists.rejectModal.title": "Reject Artist: ",
+    "artists.rejectModal.reason": "Rejection Reason *",
+    "artists.rejectModal.placeholder": "Enter rejection reason...",
+    "artists.rejectModal.submit": "Reject",
+    "artists.rejectModal.processing": "Rejecting...",
+    "artists.detailModal.title": "Artist Application Profile",
+    "artists.detailModal.accountInfo": "Account Info",
+    "artists.detailModal.appInfo": "Application Info",
+    "artists.detailModal.aiScore": "AI Confidence",
+    "artists.detailModal.submittedAt": "Submitted At",
+    "artists.detailModal.reviewedAt": "Reviewed At",
+    "artists.detailModal.reviewedBy": "Reviewed By",
+    "artists.detailModal.docsAndLinks": "Documents & Links",
+    "artists.detailModal.openDoc": "Open Submitted Document",
+    "artists.detailModal.noDoc": "No document",
+    "artists.detailModal.noLinks": "No social links",
+
+    // User Management
+    "users.title": "User Management",
+    "users.searchPlaceholder": "Search by name or email...",
+    "users.table.user": "User",
+    "users.table.role": "Role",
+    "users.table.status": "Status",
+    "users.table.actions": "Actions",
+    "users.role.user": "User",
+    "users.role.admin": "Admin",
+    "users.role.artist": "Artist",
+    "users.status.active": "Active",
+    "users.status.banned": "Banned",
+    "users.action.ban": "Ban User",
+    "users.action.unban": "Unban User",
+    "users.confirmBan": "Are you sure you want to ban this user?",
+    "users.confirmUnban": "Are you sure you want to unban this user?",
+
+    // Artist Approval
+    "artists.title": "Artist Approvals",
+    "artists.noPending": "No pending artist requests",
+    "artists.table.name": "Name",
+    "artists.table.bio": "Bio",
+    "artists.table.genres": "Genres",
+    "artists.table.requestDate": "Request Date",
+    "artists.table.actions": "Actions",
+    "artists.action.approve": "Approve",
+    "artists.action.reject": "Reject",
+    "artists.confirmApprove": "Approve this artist request?",
+    "artists.confirmReject": "Reject this artist request?",
   },
   vi: {
     // Navigation
@@ -288,7 +495,7 @@ const translations = {
     "nav.genres": "Thể loại",
     "nav.analytics": "Phân tích",
     "nav.history": "Lịch sử",
-    
+
     // Auth
     "auth.signIn": "Đăng nhập",
     "auth.signUp": "Đăng ký",
@@ -300,7 +507,7 @@ const translations = {
     "auth.confirmPassword": "Xác nhận mật khẩu",
     "auth.username": "Tên người dùng",
     "auth.fullName": "Họ và tên",
-    
+
     // Common
     "common.loading": "Đang tải...",
     "common.save": "Lưu",
@@ -317,7 +524,7 @@ const translations = {
     "common.showLess": "Thu gọn",
     "common.unreadNotifications": "chưa đọc",
     "common.allCaughtUp": "Bạn đã xem hết!",
-    
+
     // Settings
     "settings.title": "Cài đặt",
     "settings.account": "Tài khoản",
@@ -388,7 +595,7 @@ const translations = {
     "settings.request": "Yêu cầu",
     "settings.deleteAccount": "Xóa tài khoản",
     "settings.deleteAccountDesc": "Xóa vĩnh viễn tài khoản và tất cả dữ liệu của bạn",
-    
+
     // Music
     "music.play": "Phát",
     "music.pause": "Tạm dừng",
@@ -402,7 +609,7 @@ const translations = {
     "music.like": "Thích",
     "music.unlike": "Bỏ thích",
     "music.download": "Tải xuống",
-    
+
     // Social
     "social.follow": "Theo dõi",
     "social.unfollow": "Bỏ theo dõi",
@@ -413,7 +620,7 @@ const translations = {
     "social.reply": "Trả lời",
     "social.delete": "Xóa",
     "social.report": "Báo cáo",
-    
+
     // Time
     "time.now": "Vừa xong",
     "time.minutesAgo": "phút trước",
@@ -422,13 +629,13 @@ const translations = {
     "time.weeksAgo": "tuần trước",
     "time.monthsAgo": "tháng trước",
     "time.yearsAgo": "năm trước",
-    
+
     // Genres
     "genres.title": "Thể loại nhạc",
     "genres.trending": "Thịnh hành",
     "genres.all": "Tất cả thể loại",
     "genres.songs": "bài hát",
-    
+
     // Analytics
     "analytics.title": "Bảng phân tích",
     "analytics.totalPlays": "Tổng lượt phát",
@@ -436,7 +643,7 @@ const translations = {
     "analytics.topSongs": "Bài hát hàng đầu",
     "analytics.recentSearches": "Tìm kiếm gần đây",
     "analytics.listenHistory": "Lịch sử nghe",
-    
+
     // History
     "history.title": "Lịch sử",
     "history.listen": "Lịch sử nghe",
@@ -444,7 +651,7 @@ const translations = {
     "history.clear": "Xóa lịch sử",
     "history.noListenHistory": "Chưa có lịch sử nghe",
     "history.noSearchHistory": "Chưa có lịch sử tìm kiếm",
-    
+
     // Home & Feed
     "home.title": "Trang chủ",
     "home.whatsOnYourMind": "Bạn đang nghĩ gì?",
@@ -452,14 +659,43 @@ const translations = {
     "home.trendingSongs": "Bài hát thịnh hành",
     "home.forYou": "Dành cho bạn",
     "home.stories": "Tin",
-    
+    "home.welcome": "Chào mừng trở lại, {name}!",
+    "home.welcomeArtist": "Sẵn sàng chia sẻ sáng tạo mới nhất của bạn với thế giới?",
+    "home.welcomeUser": "Khám phá âm nhạc mới và kết nối với nghệ sĩ bạn yêu thích.",
+    "home.exploreTrending": "Xem Thịnh Hành",
+    "home.yourFeed": "Bảng tin",
+    "home.latestPosts": "Bài viết mới nhất",
+    "home.trending": "Thịnh hành",
+    "home.noPosts": "Chưa có bài viết",
+    "home.noTrending": "Không có bài viết thịnh hành",
+    "home.followHint": "Theo dõi nghệ sĩ để xem bài viết của họ",
+    "home.signInHint": "Đăng nhập để xem nội dung dành riêng cho bạn",
+    "home.quickActions": "Thao tác nhanh",
+    "home.createPlaylist": "Tạo Playlist",
+    "home.discoverMusic": "Khám phá nhạc",
+    "home.uploadTrack": "Tải lên bài hát",
+    "home.trendingNow": "Đang thịnh hành",
+    "home.seeAll": "Xem tất cả",
+    "home.aiRecommended": "Gợi ý từ AI",
+    "home.post.photo": "Ảnh",
+    "home.post.music": "Nhạc",
+    "home.post.feeling": "Cảm xúc",
+    "home.post.submit": "Đăng",
+
+    // Navbar Extended
+    "nav.groups": "Nhóm",
+    "nav.admin": "Bảng Admin",
+    "nav.devices": "Thiết bị",
+    "nav.changePassword": "Đổi mật khẩu",
+
+
     // Discover
     "discover.title": "Khám phá",
     "discover.recent": "Nghe gần đây",
     "discover.newest": "Mới phát hành",
     "discover.mostViewed": "Phổ biến nhất",
     "discover.viewAll": "Xem tất cả",
-    
+
     // Upload
     "upload.title": "Tải lên",
     "upload.song": "Tải lên bài hát",
@@ -473,7 +709,7 @@ const translations = {
     "upload.uploading": "Đang tải lên...",
     "upload.success": "Tải lên thành công!",
     "upload.error": "Tải lên thất bại",
-    
+
     // Profile
     "profile.posts": "Bài viết",
     "profile.followers": "Người theo dõi",
@@ -482,7 +718,19 @@ const translations = {
     "profile.songs": "Bài hát",
     "profile.playlists": "Playlist",
     "profile.about": "Giới thiệu",
-    
+    "profile.friends": "Bạn bè",
+    "profile.friendsHint": "Bạn bè là những người theo dõi lẫn nhau",
+    "profile.noPosts": "Chưa có bài viết nào.",
+    "profile.noFriends": "Chưa có bạn bè nào.",
+    "profile.noSongs": "Chưa có bài hát nào.",
+    "profile.noPlaylists": "Chưa có playlist nào.",
+    "profile.pinnedGroups": "Nhóm đã ghim",
+    "profile.viewAll": "Xem tất cả",
+    "profile.locked": "Nội dung bị khóa",
+    "profile.artistOnly": "Chỉ tài khoản Nghệ sĩ mới có thể đăng bài hát",
+    "profile.contactAdmin": "Liên hệ admin để nâng cấp tài khoản lên Nghệ sĩ",
+
+
     // Playlist
     "playlist.myPlaylists": "Playlist của tôi",
     "playlist.create": "Tạo Playlist",
@@ -491,19 +739,175 @@ const translations = {
     "playlist.name": "Tên Playlist",
     "playlist.public": "Công khai",
     "playlist.private": "Riêng tư",
-    
+
     // Messages
     "messages.title": "Tin nhắn",
     "messages.newMessage": "Tin nhắn mới",
     "messages.typeMessage": "Nhập tin nhắn...",
     "messages.send": "Gửi",
     "messages.noMessages": "Chưa có tin nhắn",
-    
+
     // Listen Page
     "listen.noSong": "Chưa chọn bài hát nào",
     "listen.chooseSong": "Chọn một bài hát để bắt đầu nghe",
     "listen.about": "Về bài hát này",
     "listen.plays": "lượt nghe",
     "listen.addToPlaylist": "Thêm vào Playlist",
+    "listen.tabInfo": "Thông tin",
+    "listen.tabLyrics": "Lyrics",
+    "listen.tabAnalysis": "AI Analysis",
+    "listen.tabCover": "Ảnh bìa",
+    "listen.metaArtist": "Nghệ sĩ",
+    "listen.metaDuration": "Thời lượng",
+    "listen.metaPlays": "Lượt nghe",
+    "listen.metaReleased": "Ngày đăng",
+    "listen.metaGenre": "Thể loại",
+    "listen.noDescription": "Chưa có mô tả.",
+    "listen.lyricsTitle": "Lyrics",
+    "listen.loadingLyrics": "Đang tải lời bài hát...",
+    "listen.noLyrics": "Chưa có lời cho bài hát này.",
+    "listen.syncedLyricsAvailable": "Có lời đồng bộ theo thời gian",
+    "listen.manageLyrics": "Quản lý Lyrics",
+    "listen.coverTitle": "Ảnh bìa",
+    "listen.openCover": "Mở ảnh bìa",
+
+    // Admin Dashboard
+    "admin.title": "Bảng Điều Khiển Admin",
+    "admin.updatedAt": "Cập nhật lúc",
+    "admin.refresh": "Làm mới",
+    "admin.quickActions": "Thao Tác Nhanh",
+    "admin.goToAdmin": "Đi tới trang quản trị",
+    "admin.manageUsers": "Quản lý Users",
+    "admin.approveArtists": "Duyệt Nghệ sĩ",
+    "admin.analytics": "Admin Analytics",
+    "admin.reports": "Báo cáo",
+    "admin.totalUsers": "Tổng Users",
+    "admin.totalAccounts": "Tổng số tài khoản",
+    "admin.verified": "Đã Xác Thực",
+    "admin.verifiedDesc": "trên tổng users",
+    "admin.banned": "Bị Cấm",
+    "admin.bannedAccounts": "Tài khoản bị khóa",
+    "admin.totalArtists": "Tổng Nghệ sĩ",
+    "admin.roleArtist": "Role ARTIST",
+    "admin.pending": "Chờ Duyệt",
+    "admin.pendingArtists": "Hồ sơ nghệ sĩ đang chờ",
+    "admin.approved": "Đã Duyệt",
+    "admin.approvedArtists": "Hồ sơ nghệ sĩ đã duyệt",
+    "admin.rejected": "Từ Chối",
+    "admin.rejectedArtists": "Hồ sơ nghệ sĩ bị từ chối",
+    "admin.waiting": "đang chờ",
+
+    // Reports
+    "reports.management": "Quản Lý Báo Cáo",
+    "reports.myReports": "Báo Cáo Của Tôi",
+    "reports.allStatus": "Tất Cả Trạng Thái",
+    "reports.pending": "Chờ Xử Lý",
+    "reports.resolved": "Đã Giải Quyết",
+    "reports.rejected": "Đã Từ Chối",
+    "reports.table.type": "Loại",
+    "reports.table.reason": "Lý Do",
+    "reports.table.description": "Mô Tả",
+    "reports.table.reporter": "Người Báo Cáo",
+    "reports.table.date": "Ngày",
+    "reports.table.status": "Trạng Thái",
+    "reports.table.actions": "Hành Động",
+    "reports.action.viewDetails": "Xem Chi Tiết",
+    "reports.action.resolve": "Giải Quyết",
+    "reports.action.reject": "Từ Chối",
+    "reports.action.delete": "Xóa Báo Cáo",
+    "reports.confirmDelete": "Bạn có chắc chắn muốn xóa báo cáo này không? Hành động này không thể hoàn tác.",
+    "reports.deleteTitle": "Xóa Báo Cáo",
+    "reports.noReports": "Không tìm thấy báo cáo",
+    "reports.empty": "Chưa có báo cáo nào",
+    "reports.noReportsFilter": "Không có báo cáo với trạng thái",
+    "reports.detailsTitle": "Chi Tiết Báo Cáo",
+    "reports.targetItem": "Mục Tiêu",
+    "reports.noDescription": "Không có mô tả thêm.",
+    "common.close": "Đóng",
+    "common.back": "Quay lại",
+    "common.total": "Tổng",
+    "common.page": "Trang",
+    "common.previous": "Trước",
+    "common.next": "Sau",
+    "common.refresh": "Làm mới",
+    "common.clear": "Xóa",
+
+    // User Management Extended
+    "users.searchResult": "Kết quả tìm kiếm: ",
+    "users.userList": "Danh sách users",
+    "users.filter.allStatus": "Tất cả trạng thái",
+    "users.filter.verified": "Đã xác thực",
+    "users.filter.unverified": "Chưa xác thực",
+    "users.filter.allRoles": "Tất cả vai trò",
+    "users.filter.perPage": "/trang",
+    "users.noUsers": "Không tìm thấy user nào",
+    "users.banModal.title": "Cấm User: ",
+    "users.banModal.reason": "Lý do cấm *",
+    "users.banModal.placeholder": "Nhập lý do cấm user này...",
+    "users.banModal.submit": "Cấm User",
+    "users.banModal.banning": "Đang cấm...",
+
+    // Artist Approval Extended
+    "artists.searchPlaceholder": "Tìm username/email/nghệ danh...",
+    "artists.tabs.pending": "Chờ Duyệt",
+    "artists.tabs.approved": "Đã Duyệt",
+    "artists.tabs.rejected": "Từ Chối",
+    "artists.noArtists": "Không có nghệ sĩ nào",
+    "artists.noArtistsMatch": "Không tìm thấy nghệ sĩ phù hợp",
+    "artists.card.stageName": "Nghệ danh",
+    "artists.card.songCount": "Số bài hát xác thực",
+    "artists.card.viewDoc": "Xem tài liệu",
+    "artists.card.social": "Mạng xã hội",
+    "artists.card.rejectionReason": "Lý do từ chối",
+    "artists.card.approve": "Duyệt",
+    "artists.card.reject": "Từ chối",
+    "artists.card.approved": "Đã duyệt",
+    "artists.card.rejected": "Đã từ chối",
+    "artists.rejectModal.title": "Từ Chối Nghệ Sĩ: ",
+    "artists.rejectModal.reason": "Lý do từ chối *",
+    "artists.rejectModal.placeholder": "Nhập lý do từ chối đơn đăng ký nghệ sĩ...",
+    "artists.rejectModal.submit": "Từ Chối",
+    "artists.rejectModal.processing": "Đang từ chối...",
+    "artists.detailModal.title": "Hồ sơ đăng ký nghệ sĩ",
+    "artists.detailModal.accountInfo": "Thông tin tài khoản",
+    "artists.detailModal.appInfo": "Thông tin đăng ký",
+    "artists.detailModal.aiScore": "AI confidence",
+    "artists.detailModal.submittedAt": "Gửi lúc",
+    "artists.detailModal.reviewedAt": "Duyệt lúc",
+    "artists.detailModal.reviewedBy": "Duyệt bởi",
+    "artists.detailModal.docsAndLinks": "Tài liệu & liên kết",
+    "artists.detailModal.openDoc": "Mở tài liệu đã gửi",
+    "artists.detailModal.noDoc": "Không có tài liệu",
+    "artists.detailModal.noLinks": "Không có link mạng xã hội",
+
+    // User Management
+    "users.title": "Quản Lý Người Dùng",
+    "users.searchPlaceholder": "Tìm kiếm theo tên hoặc email...",
+    "users.table.user": "Người Dùng",
+    "users.table.role": "Vai Trò",
+    "users.table.status": "Trạng Thái",
+    "users.table.actions": "Hành Động",
+    "users.role.user": "Người Dùng",
+    "users.role.admin": "Quản Trị Viên",
+    "users.role.artist": "Nghệ Sĩ",
+    "users.status.active": "Hoạt Động",
+    "users.status.banned": "Bị Cấm",
+    "users.action.ban": "Cấm Người Dùng",
+    "users.action.unban": "Mở Khóa",
+    "users.confirmBan": "Bạn có chắc chắn muốn cấm người dùng này?",
+    "users.confirmUnban": "Bạn có chắc chắn muốn mở khóa cho người dùng này?",
+
+    // Artist Approval
+    "artists.title": "Duyệt Nghệ Sĩ",
+    "artists.noPending": "Không có yêu cầu nào đang chờ",
+    "artists.table.name": "Tên",
+    "artists.table.bio": "Tiểu Sử",
+    "artists.table.genres": "Thể Loại",
+    "artists.table.requestDate": "Ngày Yêu Cầu",
+    "artists.table.actions": "Hành Động",
+    "artists.action.approve": "Phê Duyệt",
+    "artists.action.reject": "Từ Chối",
+    "artists.confirmApprove": "Phê duyệt yêu cầu này?",
+    "artists.confirmReject": "Từ chối yêu cầu này?",
   },
 };

@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -34,6 +35,11 @@ public class DeviceInfo {
     private LocalDateTime lastLoginAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    @JsonProperty("lastActiveAt")
+    public LocalDateTime getLastActiveAt() {
+        return lastLoginAt;
+    }
 
     public DeviceInfo(String userId, String deviceId, String deviceName, String userAgent,
                      String ipAddress, String sessionId) {

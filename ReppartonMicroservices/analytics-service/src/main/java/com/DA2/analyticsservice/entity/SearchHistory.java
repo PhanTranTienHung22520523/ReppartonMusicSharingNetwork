@@ -1,25 +1,45 @@
 package com.DA2.analyticsservice.entity;
 
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
-@Document(collection = "search_history")
+@Entity
+@Table(name = "search_history")
 public class SearchHistory {
     @Id
+    @Column(name = "id", nullable = false, updatable = false)
     private String id;
+
+    @Column(name = "user_id", nullable = false)
     private String userId;
+
+    @Column(name = "search_query", nullable = false)
     private String searchQuery;
+
+    @Column(name = "searched_at", nullable = false)
     private LocalDateTime searchedAt;
 
     public SearchHistory() {
-        this.searchedAt = LocalDateTime.now();
     }
 
     public SearchHistory(String userId, String searchQuery) {
         this.userId = userId;
         this.searchQuery = searchQuery;
-        this.searchedAt = LocalDateTime.now();
+    }
+
+    @PrePersist
+    public void prePersist() {
+        if (this.id == null || this.id.isBlank()) {
+            this.id = UUID.randomUUID().toString();
+        }
+        if (this.searchedAt == null) {
+            this.searchedAt = LocalDateTime.now();
+        }
     }
 
     // Getters and Setters

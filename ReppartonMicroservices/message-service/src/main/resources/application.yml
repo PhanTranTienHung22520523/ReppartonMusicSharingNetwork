@@ -3,10 +3,10 @@ spring:
     name: message-service
   data:
     mongodb:
-      uri: ${MONGODB_URI}
+      uri: ${MONGODB_URI_MESSAGES:${MONGODB_URI:mongodb://localhost:27017/repparton_messages}}
 
 server:
-  port: 8088
+  port: ${SERVER_PORT:8089}
 
 eureka:
   client:

@@ -2,6 +2,7 @@ package com.DA2.postservice.entity;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.annotation.Transient;
 import java.time.LocalDateTime;
 
 @Document(collection = "posts")
@@ -9,6 +10,11 @@ public class Post {
     @Id
     private String id;
     private String userId;
+    // Denormalized user fields (present in existing Mongo documents)
+    private String username;
+    private String userProfilePic;
+    // Attached song id (if post references a song)
+    private String songId;
     private String content;
     private String mediaUrl;
     private String mediaType; // "image", "video", "audio", "other"
@@ -16,6 +22,9 @@ public class Post {
     private int likes = 0;
     private int shares = 0;
     private int comments = 0;
+    
+    private String sharedPostId;
+    private String type; // "POST", "SHARE"
 
     // Location check-in fields
     private String locationName; // e.g., "Ho Chi Minh City, Vietnam"
@@ -24,6 +33,12 @@ public class Post {
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    @Transient
+    private Object attachedSong;
+
+    @Transient
+    private Object sharedPost;
 
     public Post() {
         this.createdAt = LocalDateTime.now();
@@ -54,6 +69,30 @@ public class Post {
 
     public void setUserId(String userId) {
         this.userId = userId;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getUserProfilePic() {
+        return userProfilePic;
+    }
+
+    public void setUserProfilePic(String userProfilePic) {
+        this.userProfilePic = userProfilePic;
+    }
+
+    public String getSongId() {
+        return songId;
+    }
+
+    public void setSongId(String songId) {
+        this.songId = songId;
     }
 
     public String getContent() {
@@ -128,6 +167,14 @@ public class Post {
         this.updatedAt = updatedAt;
     }
 
+    public Object getAttachedSong() {
+        return attachedSong;
+    }
+
+    public void setAttachedSong(Object attachedSong) {
+        this.attachedSong = attachedSong;
+    }
+
     public void incrementLikes() {
         this.likes++;
     }
@@ -175,5 +222,29 @@ public class Post {
 
     public void setLongitude(Double longitude) {
         this.longitude = longitude;
+    }
+
+    public String getSharedPostId() {
+        return sharedPostId;
+    }
+
+    public void setSharedPostId(String sharedPostId) {
+        this.sharedPostId = sharedPostId;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    public Object getSharedPost() {
+        return sharedPost;
+    }
+
+    public void setSharedPost(Object sharedPost) {
+        this.sharedPost = sharedPost;
     }
 }

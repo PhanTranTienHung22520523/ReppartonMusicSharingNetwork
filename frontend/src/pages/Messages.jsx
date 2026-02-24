@@ -7,7 +7,9 @@ import {
   getMessagesWithUser,
   sendMessage,
   startConversation,
+  markConversationAsRead,
 } from "../api/messageService";
+import { getFollowers, getFollowing } from "../api/followService";
 import { globalSearch } from "../api/searchService";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { WS_ENDPOINTS } from "../config/api.config";
@@ -28,6 +30,14 @@ export default function Messages() {
   const [searchLoading, setSearchLoading] = useState(false);
   const chatEndRef = useRef(null);
 
+  const normalizeUserList = (value) => {
+    if (Array.isArray(value)) return value;
+    if (Array.isArray(value?.data)) return value.data;
+    if (Array.isArray(value?.content)) return value.content;
+    if (Array.isArray(value?.users)) return value.users;
+    return [];
+  };
+
   // Check if user is ARTIST (case insensitive)
   const isArtist = user && user.role && user.role.toUpperCase() === 'ARTIST';
 
@@ -35,7 +45,7 @@ export default function Messages() {
   const { isConnected, connectionStatus, lastMessage, sendMessage: sendWsMessage } = useWebSocket(
     WS_ENDPOINTS.messages,
     {
-      autoConnect: isArtist,
+      autoConnect: true, // Connect for everyone
       onMessage: (message) => {
         console.log('New message received via WebSocket:', message);
         if (message.type === 'message' && selectedConv) {
@@ -63,22 +73,56 @@ export default function Messages() {
 
   // Lấy danh sách hội thoại
   useEffect(() => {
-    if (!user || !isArtist) return;
+    if (!user) return;
     setLoading(true);
-    getConversations()
-      .then((response) => {
-        setConversations(response.data || []);
+
+    Promise.allSettled([
+      getConversations(0, 50, user.id),
+      getFollowing(user.id),
+      getFollowers(user.id),
+    ])
+      .then(([convRes, followingRes, followersRes]) => {
+        const convPayload = convRes.status === "fulfilled" ? convRes.value : null;
+        const baseConversations = normalizeUserList(convPayload?.data ?? convPayload);
+
+        const following = followingRes.status === "fulfilled" ? normalizeUserList(followingRes.value) : [];
+        const followers = followersRes.status === "fulfilled" ? normalizeUserList(followersRes.value) : [];
+
+        const friendById = new Map();
+        for (const u of [...following, ...followers]) {
+          if (!u?.id || u.id === user.id) continue;
+          friendById.set(u.id, u);
+        }
+
+        const partnerIdsInConversations = new Set();
+        for (const conv of baseConversations) {
+          const partner = conv?.user1?.id === user.id ? conv?.user2 : conv?.user1;
+          if (partner?.id) partnerIdsInConversations.add(partner.id);
+        }
+
+        const placeholders = [];
+        for (const friend of friendById.values()) {
+          if (partnerIdsInConversations.has(friend.id)) continue;
+          placeholders.push({
+            id: `friend:${friend.id}`,
+            user1: user,
+            user2: friend,
+            _placeholder: true,
+          });
+        }
+
+        setConversations([...baseConversations, ...placeholders]);
       })
       .catch((error) => {
-        console.error("Error loading conversations:", error);
+        console.error("Error loading conversations/friends:", error);
         setConversations([]);
       })
       .finally(() => setLoading(false));
-  }, [user, isArtist]);
+  }, [user]);
 
   // Lấy tin nhắn khi chọn hội thoại
   useEffect(() => {
-    if (!selectedConv || !isArtist) return;
+    if (!selectedConv) return;
     
     console.log("Loading messages for conversation:", selectedConv.id);
     
@@ -92,13 +136,25 @@ export default function Messages() {
       .then((response) => {
         console.log("Messages API response:", response);
         console.log("Messages data:", response.data);
-        setMessages(response.data || []);
+        const data = response?.data ?? response;
+        setMessages(Array.isArray(data) ? data : []);
+
+        // Mark as read (best-effort)
+        if (selectedConv?.id) {
+          markConversationAsRead(selectedConv.id, user.id)
+            .then(() => {
+              setConversations((prev) =>
+                prev.map((c) => (c.id === selectedConv.id ? { ...c, unreadCount: 0, isUnread: false } : c))
+              );
+            })
+            .catch(() => {});
+        }
       })
       .catch((error) => {
         console.error("Error loading messages:", error);
         setMessages([]);
       });
-  }, [selectedConv, isArtist, user]);
+  }, [selectedConv, user]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -106,7 +162,7 @@ export default function Messages() {
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!user || !isArtist) {
+    if (!user) {
       setShowModal(true);
       return;
     }
@@ -135,9 +191,16 @@ export default function Messages() {
       
       // Reload messages
       const response = await getMessagesWithUser(receiverId);
-      setMessages(response.data || []);
+      const data = response?.data ?? response;
+      setMessages(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error sending message:", error);
+      // Show user-friendly error message
+      if (error.message && error.message.includes("cannot send direct messages")) {
+        alert("⛔ You cannot send direct messages to this artist.\n\nPlease use group chat instead or wait for the artist to enable direct messages.");
+      } else {
+        alert("Failed to send message: " + (error.message || "Unknown error"));
+      }
     }
   };
 
@@ -150,9 +213,17 @@ export default function Messages() {
     setSearchLoading(true);
     try {
       const results = await globalSearch(query);
-      // Filter only artists
-      const artists = (results.users || []).filter(u => u.role === 'ARTIST' && u.id !== user.id);
-      setSearchResults(artists);
+      const users = results?.users || [];
+
+      const filteredUsers = isArtist
+        ? users.filter((u) => u?.id && u.id !== user.id)
+        : users.filter((u) => {
+            if (!u?.id || u.id === user.id) return false;
+            const role = String(u.role || '').toUpperCase();
+            return role !== 'ARTIST';
+          });
+
+      setSearchResults(filteredUsers);
     } catch (error) {
       console.error("Error searching artists:", error);
       setSearchResults([]);
@@ -161,16 +232,17 @@ export default function Messages() {
     }
   };
 
-  const handleStartNewConversation = async (artistId) => {
+  const handleStartNewConversation = async (targetUserId) => {
     try {
-      await startConversation(artistId);
+      await startConversation(targetUserId);
       setShowNewChat(false);
       setSearchQuery("");
       setSearchResults([]);
       
       // Reload conversations
-      const response = await getConversations();
-      setConversations(response.data || []);
+      const response = await getConversations(0, 20, user.id);
+      const data = response?.data ?? response;
+      setConversations(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error starting conversation:", error);
       alert("Failed to start conversation: " + error.message);
@@ -187,45 +259,7 @@ export default function Messages() {
   }
 
   // Show restriction message for non-artists
-  if (!isArtist) {
-    return (
-      <MainLayout>
-        <div className="container-fluid">
-          <div className="row justify-content-center">
-            <div className="col-lg-6">
-              <div className="card border-0 shadow-sm">
-                <div className="card-body text-center p-5">
-                  <div className="mb-4">
-                    <FaLock size={64} className="text-muted" />
-                  </div>
-                  <h3 className="fw-bold mb-3">Messages Restricted</h3>
-                  <p className="text-muted mb-4">
-                    The messaging feature is exclusively available for artists. 
-                    Only verified artists can send and receive messages with other artists.
-                  </p>
-                  <div className="d-flex gap-3 justify-content-center">
-                    <button 
-                      className="btn btn-outline-primary"
-                      onClick={() => window.location.href = '/register'}
-                    >
-                      <FaMusic className="me-2" />
-                      Become an Artist
-                    </button>
-                    <button 
-                      className="btn btn-primary"
-                      onClick={() => window.location.href = '/discover'}
-                    >
-                      Discover Music
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
+  // if (!isArtist) { ... } - REMOVED RESTRICTION
 
   return (
     <MainLayout>
@@ -264,10 +298,15 @@ export default function Messages() {
                     size={36} 
                     className="me-2"
                   />
-                  <div>
-                    <div className="fw-bold">{partner.username}</div>
+                  <div className="flex-grow-1">
+                    <div className="d-flex justify-content-between align-items-center">
+                      <div className="fw-bold">{partner.username}</div>
+                      {conv?.unreadCount > 0 && (
+                        <span className="badge bg-danger ms-2">{conv.unreadCount}</span>
+                      )}
+                    </div>
                     <div className="text-muted" style={{ fontSize: 13 }}>
-                      {partner.email}
+                      {conv?.lastMessage || partner.email}
                     </div>
                   </div>
                 </button>
@@ -392,7 +431,7 @@ export default function Messages() {
                     <input
                       type="text"
                       className="form-control"
-                      placeholder="Search for artists..."
+                      placeholder={isArtist ? "Search for users..." : "Search for users..."}
                       value={searchQuery}
                       onChange={(e) => {
                         setSearchQuery(e.target.value);
@@ -414,26 +453,26 @@ export default function Messages() {
                 )}
                 
                 <div className="list-group" style={{ maxHeight: 300, overflowY: 'auto' }}>
-                  {searchResults.map((artist) => (
+                  {searchResults.map((targetUser) => (
                     <button
-                      key={artist.id}
+                      key={targetUser.id}
                       className="list-group-item list-group-item-action d-flex align-items-center"
-                      onClick={() => handleStartNewConversation(artist.id)}
+                      onClick={() => handleStartNewConversation(targetUser.id)}
                     >
                       <UserAvatar 
-                        user={artist} 
+                        user={targetUser} 
                         size={40} 
                         className="me-3"
                       />
                       <div>
-                        <div className="fw-bold">{artist.fullName || artist.username}</div>
-                        <div className="text-muted small">@{artist.username}</div>
+                        <div className="fw-bold">{targetUser.fullName || targetUser.username}</div>
+                        <div className="text-muted small">@{targetUser.username}</div>
                       </div>
                     </button>
                   ))}
                   {searchQuery && !searchLoading && searchResults.length === 0 && (
                     <div className="text-muted text-center py-3">
-                      No artists found
+                      No users found
                     </div>
                   )}
                 </div>

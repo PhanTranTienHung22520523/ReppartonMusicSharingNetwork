@@ -35,6 +35,7 @@ public class Song {
     private String lyrics;
     private List<LyricLine> syncedLyrics;
     private SongAnalysis aiAnalysis;
+    private Map<String, Object> aiRaw;
 
     // Constructors
     public Song() {
@@ -106,6 +107,9 @@ public class Song {
     
     public SongAnalysis getAiAnalysis() { return aiAnalysis; }
     public void setAiAnalysis(SongAnalysis aiAnalysis) { this.aiAnalysis = aiAnalysis; }
+
+    public Map<String, Object> getAiRaw() { return aiRaw; }
+    public void setAiRaw(Map<String, Object> aiRaw) { this.aiRaw = aiRaw; }
 
     // Inner classes
     public static class LyricLine {
@@ -207,6 +211,7 @@ public class Song {
     public static class ChordAnalysis {
         private List<Chord> chords;
         private LocalDateTime analyzedAt;
+        private Map<String, Object> dominantLoop;
         
         public ChordAnalysis() {}
         
@@ -223,20 +228,26 @@ public class Song {
         
         public LocalDateTime getAnalyzedAt() { return analyzedAt; }
         public void setAnalyzedAt(LocalDateTime analyzedAt) { this.analyzedAt = analyzedAt; }
+
+        public Map<String, Object> getDominantLoop() { return dominantLoop; }
+        public void setDominantLoop(Map<String, Object> dominantLoop) { this.dominantLoop = dominantLoop; }
         
         public static Builder builder() { return new Builder(); }
         
         public static class Builder {
             private List<Chord> chords;
             private LocalDateTime analyzedAt;
+            private Map<String, Object> dominantLoop;
             
             public Builder chords(List<Chord> chords) { this.chords = chords; return this; }
             public Builder analyzedAt(LocalDateTime analyzedAt) { this.analyzedAt = analyzedAt; return this; }
+            public Builder dominantLoop(Map<String, Object> dominantLoop) { this.dominantLoop = dominantLoop; return this; }
             
             public ChordAnalysis build() {
                 ChordAnalysis analysis = new ChordAnalysis();
                 analysis.chords = this.chords;
                 analysis.analyzedAt = this.analyzedAt;
+                analysis.dominantLoop = this.dominantLoop;
                 return analysis;
             }
         }

@@ -9,6 +9,7 @@ export default function PostComments({ postId, className = '' }) {
       getComments={getPostComments}
       addComment={addCommentToPost}
       className={className}
+      defaultExpanded={true}
     />
   );
 }

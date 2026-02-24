@@ -13,7 +13,8 @@ import java.util.Date;
 @Component
 public class JwtUtil {
     
-    @Value("${jwt.secret:repparton-secret-key-for-jwt-authentication-2024}")
+    // Use a longer default secret for HS512 (>= 512 bits). Replace with env var in production.
+    @Value("${jwt.secret:${JWT_SECRET:repparton-secret-key-2025-very-long-and-secure-key-please-change-1234567890}}")
     private String jwtSecret;
     
     @Value("${jwt.access-token-expiration:3600000}") // 1 hour
@@ -70,5 +71,23 @@ public class JwtUtil {
         } catch (Exception e) {
             throw new RuntimeException("Invalid refresh token");
         }
+    }
+
+    public String validateToken(String token) {
+        try {
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+            
+            return claims.getSubject(); // Returns userId
+        } catch (Exception e) {
+            throw new RuntimeException("Invalid token: " + e.getMessage());
+        }
+    }
+
+    public String getUserIdFromToken(String token) {
+        return validateToken(token);
     }
 }

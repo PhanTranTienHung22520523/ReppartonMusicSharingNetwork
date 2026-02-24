@@ -11,7 +11,7 @@ import java.util.List;
 public interface GroupConversationRepository extends MongoRepository<GroupConversation, String> {
 
     // Find groups where user is a member
-    @Query("{ 'memberIds': ?0 }")
+    @Query("{ $or: [ { 'memberIds': ?0 }, { 'participants': ?0 } ] }")
     List<GroupConversation> findByMemberId(String userId);
 
     // Find groups created by user
@@ -21,7 +21,7 @@ public interface GroupConversationRepository extends MongoRepository<GroupConver
     List<GroupConversation> findByIsPrivateFalse();
 
     // Find groups by name (case-insensitive search)
-    @Query("{ 'name': { $regex: ?0, $options: 'i' } }")
+    @Query("{ $or: [ { 'name': { $regex: ?0, $options: 'i' } }, { 'groupName': { $regex: ?0, $options: 'i' } } ] }")
     List<GroupConversation> findByNameContaining(String name);
 
     // Find groups where user is admin or owner

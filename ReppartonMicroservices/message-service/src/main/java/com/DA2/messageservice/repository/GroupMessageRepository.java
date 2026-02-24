@@ -45,4 +45,7 @@ public interface GroupMessageRepository extends MongoRepository<GroupMessage, St
 
     // Find messages by reply to message
     List<GroupMessage> findByReplyToMessageId(String replyToMessageId);
+    
+    // For Artist Group Chat - find by groupId (not groupConversationId)
+    List<GroupMessage> findByGroupIdAndIsDeletedFalseOrderBySentAtDesc(String groupId);
 }

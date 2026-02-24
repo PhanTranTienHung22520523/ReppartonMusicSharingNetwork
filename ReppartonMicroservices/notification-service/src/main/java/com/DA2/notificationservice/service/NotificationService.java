@@ -1,5 +1,6 @@
 package com.DA2.notificationservice.service;
 
+import com.DA2.notificationservice.controller.WebSocketNotificationController;
 import com.DA2.notificationservice.entity.Notification;
 import com.DA2.notificationservice.repository.NotificationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,9 +16,22 @@ public class NotificationService {
     @Autowired
     private NotificationRepository notificationRepository;
 
+    @Autowired
+    private WebSocketNotificationController webSocketController;
+
     @Transactional
     public Notification createNotification(Notification notification) {
-        return notificationRepository.save(notification);
+        Notification saved = notificationRepository.save(notification);
+        
+        // Send notification via WebSocket
+        try {
+            webSocketController.sendNotificationToUser(saved.getUserId(), saved);
+        } catch (Exception e) {
+            // Log error but don't fail notification creation
+            System.err.println("Failed to send WebSocket notification: " + e.getMessage());
+        }
+        
+        return saved;
     }
 
     public Page<Notification> getUserNotifications(String userId, Pageable pageable) {

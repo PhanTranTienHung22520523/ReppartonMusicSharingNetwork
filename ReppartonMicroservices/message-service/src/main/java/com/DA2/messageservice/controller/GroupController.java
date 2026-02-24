@@ -1,5 +1,6 @@
 package com.DA2.messageservice.controller;
 
+import com.DA2.messageservice.dto.GroupSummaryDTO;
 import com.DA2.messageservice.entity.GroupConversation;
 import com.DA2.messageservice.entity.GroupMessage;
 import com.DA2.messageservice.service.GroupService;
@@ -31,7 +32,9 @@ public class GroupController {
                 request.getName(),
                 request.getDescription(),
                 userId,
-                request.getInitialMembers()
+            request.getInitialMembers(),
+            request.getAllowAllMembersChat(),
+            request.getAllowedChatMemberIds()
         );
 
         return ResponseEntity.ok(group);
@@ -41,26 +44,84 @@ public class GroupController {
      * Get user's groups
      */
     @GetMapping
-    public ResponseEntity<List<GroupConversation>> getUserGroups(@RequestHeader("X-User-Id") String userId) {
-        List<GroupConversation> groups = groupService.getUserGroups(userId);
-        return ResponseEntity.ok(groups);
+    public ResponseEntity<?> getUserGroups(@RequestHeader("X-User-Id") String userId) {
+        List<GroupSummaryDTO> groups = groupService.getUserGroupSummaries(userId);
+        return ResponseEntity.ok(Map.of("success", true, "data", groups));
+    }
+
+    /**
+     * Public browse groups (by GroupConversation.name). Optional search by query param q.
+     */
+    @GetMapping("/public")
+    public ResponseEntity<?> browsePublicGroups(
+            @RequestParam(name = "q", required = false) String q,
+            @RequestHeader(value = "X-User-Id", required = false) String requesterUserId) {
+        List<GroupSummaryDTO> groups = groupService.getPublicGroups(q, requesterUserId);
+        return ResponseEntity.ok(Map.of("success", true, "data", groups));
+    }
+
+    /**
+     * Public group summary (does not require membership).
+     */
+    @GetMapping("/public/{groupId}")
+    public ResponseEntity<?> getPublicGroupSummary(
+            @PathVariable("groupId") String groupId,
+            @RequestHeader(value = "X-User-Id", required = false) String requesterUserId) {
+        GroupSummaryDTO group = groupService.getGroupSummaryById(groupId, requesterUserId);
+        return ResponseEntity.ok(Map.of("success", true, "data", group));
+    }
+
+    /**
+     * Pinned groups on an artist profile.
+     * Public endpoint; requester header is optional (for unread/membership context).
+     */
+    @GetMapping("/pinned/{userId}")
+    public ResponseEntity<?> getPinnedGroups(
+            @PathVariable("userId") String profileUserId,
+            @RequestHeader(value = "X-User-Id", required = false) String requesterUserId) {
+        List<GroupSummaryDTO> groups = groupService.getPinnedGroupsForProfile(profileUserId, requesterUserId);
+        return ResponseEntity.ok(Map.of("success", true, "data", groups));
+    }
+
+    /**
+     * Join group (self-join)
+     */
+    @PostMapping("/{groupId}/join")
+    public ResponseEntity<?> joinGroup(
+            @PathVariable("groupId") String groupId,
+            @RequestHeader("X-User-Id") String userId) {
+        GroupConversation group = groupService.joinGroup(groupId, userId);
+        return ResponseEntity.ok(Map.of("success", true, "data", group.getId()));
+    }
+
+    /**
+     * Leave group
+     */
+    @PostMapping("/{groupId}/leave")
+    public ResponseEntity<?> leaveGroup(
+            @PathVariable("groupId") String groupId,
+            @RequestHeader("X-User-Id") String userId) {
+        GroupConversation group = groupService.leaveGroup(groupId, userId);
+        return ResponseEntity.ok(Map.of("success", true, "data", group.getId()));
     }
 
     /**
      * Get group details
      */
     @GetMapping("/{groupId}")
-    public ResponseEntity<GroupConversation> getGroup(
-            @PathVariable String groupId,
+    public ResponseEntity<?> getGroup(
+            @PathVariable("groupId") String groupId,
             @RequestHeader("X-User-Id") String userId) {
 
+        // Only allow access if user is a member; then return a consistent summary payload
         List<GroupConversation> userGroups = groupService.getUserGroups(userId);
-        GroupConversation group = userGroups.stream()
-                .filter(g -> g.getId().equals(groupId))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Group not found or access denied"));
+        boolean hasAccess = userGroups.stream().anyMatch(g -> g.getId().equals(groupId));
+        if (!hasAccess) {
+            throw new IllegalArgumentException("Group not found or access denied");
+        }
 
-        return ResponseEntity.ok(group);
+        GroupSummaryDTO summary = groupService.getGroupSummaryById(groupId, userId);
+        return ResponseEntity.ok(Map.of("success", true, "data", summary));
     }
 
     /**
@@ -68,7 +129,7 @@ public class GroupController {
      */
     @PostMapping("/{groupId}/members")
     public ResponseEntity<Void> addMember(
-            @PathVariable String groupId,
+            @PathVariable("groupId") String groupId,
             @RequestBody AddMemberRequest request,
             @RequestHeader("X-User-Id") String userId) {
 
@@ -85,8 +146,8 @@ public class GroupController {
      */
     @DeleteMapping("/{groupId}/members/{targetUserId}")
     public ResponseEntity<Void> removeMember(
-            @PathVariable String groupId,
-            @PathVariable String targetUserId,
+            @PathVariable("groupId") String groupId,
+            @PathVariable("targetUserId") String targetUserId,
             @RequestHeader("X-User-Id") String userId) {
 
         boolean success = groupService.removeMember(groupId, targetUserId, userId);
@@ -102,7 +163,7 @@ public class GroupController {
      */
     @PostMapping("/{groupId}/messages")
     public ResponseEntity<GroupMessage> sendMessage(
-            @PathVariable String groupId,
+            @PathVariable("groupId") String groupId,
             @RequestBody SendMessageRequest request,
             @RequestHeader("X-User-Id") String userId) {
 
@@ -121,10 +182,10 @@ public class GroupController {
      */
     @GetMapping("/{groupId}/messages")
     public ResponseEntity<List<GroupMessage>> getMessages(
-            @PathVariable String groupId,
+            @PathVariable("groupId") String groupId,
             @RequestHeader("X-User-Id") String userId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "50") int size) {
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "50") int size) {
 
         List<GroupMessage> messages = groupService.getMessages(groupId, userId, page, size);
         return ResponseEntity.ok(messages);
@@ -135,7 +196,7 @@ public class GroupController {
      */
     @GetMapping("/{groupId}/messages/pending")
     public ResponseEntity<List<GroupMessage>> getPendingMessages(
-            @PathVariable String groupId,
+            @PathVariable("groupId") String groupId,
             @RequestHeader("X-User-Id") String userId) {
 
         List<GroupMessage> messages = groupService.getPendingMessages(groupId, userId);
@@ -147,7 +208,7 @@ public class GroupController {
      */
     @PostMapping("/messages/{messageId}/approve")
     public ResponseEntity<Void> approveMessage(
-            @PathVariable String messageId,
+            @PathVariable("messageId") String messageId,
             @RequestBody ApproveMessageRequest request,
             @RequestHeader("X-User-Id") String userId) {
 
@@ -164,7 +225,7 @@ public class GroupController {
      */
     @DeleteMapping("/messages/{messageId}")
     public ResponseEntity<Void> deleteMessage(
-            @PathVariable String messageId,
+            @PathVariable("messageId") String messageId,
             @RequestHeader("X-User-Id") String userId) {
 
         boolean success = groupService.deleteMessage(messageId, userId);
@@ -180,7 +241,7 @@ public class GroupController {
      */
     @PutMapping("/{groupId}")
     public ResponseEntity<Void> updateGroupSettings(
-            @PathVariable String groupId,
+            @PathVariable("groupId") String groupId,
             @RequestBody UpdateGroupRequest request,
             @RequestHeader("X-User-Id") String userId) {
 
@@ -201,11 +262,31 @@ public class GroupController {
     }
 
     /**
+     * Update chat permissions: all members vs selected members.
+     */
+    @PutMapping("/{groupId}/chat-permissions")
+    public ResponseEntity<?> updateChatPermissions(
+            @PathVariable("groupId") String groupId,
+            @RequestBody UpdateChatPermissionsRequest request,
+            @RequestHeader("X-User-Id") String userId) {
+        boolean ok = groupService.updateChatPermissions(
+                groupId,
+                userId,
+                request.isAllowAllMembersChat(),
+                request.getAllowedChatMemberIds()
+        );
+        if (!ok) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Cannot update chat permissions"));
+        }
+        return ResponseEntity.ok(Map.of("success", true));
+    }
+
+    /**
      * Check user permissions for a group
      */
     @GetMapping("/{groupId}/permissions")
     public ResponseEntity<Map<String, Boolean>> getPermissions(
-            @PathVariable String groupId,
+            @PathVariable("groupId") String groupId,
             @RequestHeader("X-User-Id") String userId) {
 
         Map<String, Boolean> permissions = Map.of(
@@ -225,6 +306,8 @@ public class GroupController {
         private String name;
         private String description;
         private List<String> initialMembers;
+        private Boolean allowAllMembersChat;
+        private List<String> allowedChatMemberIds;
 
         // Getters and setters
         public String getName() { return name; }
@@ -235,6 +318,23 @@ public class GroupController {
 
         public List<String> getInitialMembers() { return initialMembers; }
         public void setInitialMembers(List<String> initialMembers) { this.initialMembers = initialMembers; }
+
+        public Boolean getAllowAllMembersChat() { return allowAllMembersChat; }
+        public void setAllowAllMembersChat(Boolean allowAllMembersChat) { this.allowAllMembersChat = allowAllMembersChat; }
+
+        public List<String> getAllowedChatMemberIds() { return allowedChatMemberIds; }
+        public void setAllowedChatMemberIds(List<String> allowedChatMemberIds) { this.allowedChatMemberIds = allowedChatMemberIds; }
+    }
+
+    public static class UpdateChatPermissionsRequest {
+        private boolean allowAllMembersChat = true;
+        private List<String> allowedChatMemberIds;
+
+        public boolean isAllowAllMembersChat() { return allowAllMembersChat; }
+        public void setAllowAllMembersChat(boolean allowAllMembersChat) { this.allowAllMembersChat = allowAllMembersChat; }
+
+        public List<String> getAllowedChatMemberIds() { return allowedChatMemberIds; }
+        public void setAllowedChatMemberIds(List<String> allowedChatMemberIds) { this.allowedChatMemberIds = allowedChatMemberIds; }
     }
 
     public static class AddMemberRequest {

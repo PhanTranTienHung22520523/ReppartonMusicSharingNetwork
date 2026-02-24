@@ -9,7 +9,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/search")
-@CrossOrigin(origins = "*")
 public class SearchController {
 
     @Autowired
@@ -24,9 +23,10 @@ public class SearchController {
     // Global search
     @GetMapping
     public ResponseEntity<?> globalSearch(
-            @RequestParam String query,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam("query") String query,
+            @RequestParam(value = "userId", required = false) String userId,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size) {
         try {
             if (query == null || query.trim().isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of(
@@ -34,7 +34,7 @@ public class SearchController {
                 ));
             }
             
-            Map<String, Object> results = searchService.globalSearch(query, page, size);
+            Map<String, Object> results = searchService.globalSearch(query, userId, page, size);
             return ResponseEntity.ok(results);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -46,11 +46,12 @@ public class SearchController {
     // Search users only
     @GetMapping("/users")
     public ResponseEntity<?> searchUsers(
-            @RequestParam String query,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam("query") String query,
+            @RequestParam(value = "userId", required = false) String userId,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size) {
         try {
-            Object results = searchService.searchUsers(query, page, size);
+            Object results = searchService.searchUsers(query, userId, page, size);
             return ResponseEntity.ok(results);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -62,11 +63,12 @@ public class SearchController {
     // Search songs only
     @GetMapping("/songs")
     public ResponseEntity<?> searchSongs(
-            @RequestParam String query,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam("query") String query,
+            @RequestParam(value = "userId", required = false) String userId,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size) {
         try {
-            Object results = searchService.searchSongs(query, page, size);
+            Object results = searchService.searchSongs(query, userId, page, size);
             return ResponseEntity.ok(results);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -78,11 +80,12 @@ public class SearchController {
     // Search playlists only
     @GetMapping("/playlists")
     public ResponseEntity<?> searchPlaylists(
-            @RequestParam String query,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam("query") String query,
+            @RequestParam(value = "userId", required = false) String userId,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size) {
         try {
-            Object results = searchService.searchPlaylists(query, page, size);
+            Object results = searchService.searchPlaylists(query, userId, page, size);
             return ResponseEntity.ok(results);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -94,11 +97,12 @@ public class SearchController {
     // Search posts only
     @GetMapping("/posts")
     public ResponseEntity<?> searchPosts(
-            @RequestParam String query,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam("query") String query,
+            @RequestParam(value = "userId", required = false) String userId,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size) {
         try {
-            Object results = searchService.searchPosts(query, page, size);
+            Object results = searchService.searchPosts(query, userId, page, size);
             return ResponseEntity.ok(results);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -110,11 +114,12 @@ public class SearchController {
     // Search lyrics only
     @GetMapping("/lyrics")
     public ResponseEntity<?> searchLyrics(
-            @RequestParam String query,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam("query") String query,
+            @RequestParam(value = "userId", required = false) String userId,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size) {
         try {
-            Object results = searchService.searchLyrics(query, page, size);
+            Object results = searchService.searchLyrics(query, userId, page, size);
             return ResponseEntity.ok(results);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -126,8 +131,8 @@ public class SearchController {
     // Quick search for autocomplete
     @GetMapping("/quick")
     public ResponseEntity<?> quickSearch(
-            @RequestParam String query,
-            @RequestParam(defaultValue = "5") int limit) {
+            @RequestParam("query") String query,
+            @RequestParam(value = "limit", defaultValue = "5") int limit) {
         try {
             if (query == null || query.trim().isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of(

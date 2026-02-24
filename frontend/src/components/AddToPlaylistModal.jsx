@@ -43,7 +43,7 @@ export default function AddToPlaylistModal({ show, onClose, song }) {
       await addSongToPlaylist(playlistId, song.id);
       const playlist = playlists.find(p => p.id === playlistId);
       setSuccess(`Added to "${playlist?.name || 'playlist'}" successfully!`);
-      
+
       // Auto close after success
       setTimeout(() => {
         onClose();
@@ -70,7 +70,7 @@ export default function AddToPlaylistModal({ show, onClose, song }) {
   if (!show || !song) return null;
 
   return (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999 }}>
       <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '20px' }}>
           <div className="modal-header border-0 pb-2">
@@ -78,13 +78,13 @@ export default function AddToPlaylistModal({ show, onClose, song }) {
               <FaPlus className="me-2 text-primary" />
               Add to Playlist
             </h5>
-            <button 
-              type="button" 
-              className="btn-close" 
+            <button
+              type="button"
+              className="btn-close"
               onClick={handleClose}
             ></button>
           </div>
-          
+
           <div className="modal-body">
             {/* Song Info */}
             <div className="d-flex align-items-center mb-4 p-3 bg-light rounded">
@@ -146,7 +146,7 @@ export default function AddToPlaylistModal({ show, onClose, song }) {
                   {searchQuery ? 'No playlists found matching your search.' : 'You don\'t have any playlists yet.'}
                 </p>
                 {!searchQuery && (
-                  <button 
+                  <button
                     className="btn btn-primary btn-sm"
                     onClick={() => {
                       // You might want to implement this to open create playlist modal
@@ -161,7 +161,7 @@ export default function AddToPlaylistModal({ show, onClose, song }) {
             ) : (
               <div className="playlist-list" style={{ maxHeight: '300px', overflowY: 'auto' }}>
                 {filteredPlaylists.map((playlist) => (
-                  <div 
+                  <div
                     key={playlist.id}
                     className="playlist-item d-flex align-items-center justify-content-between p-3 border rounded mb-2 hover-bg-light"
                     style={{ cursor: 'pointer', transition: 'background-color 0.2s' }}
@@ -179,8 +179,8 @@ export default function AddToPlaylistModal({ show, onClose, song }) {
                         </p>
                       </div>
                     </div>
-                    
-                    <button 
+
+                    <button
                       className="btn btn-outline-primary btn-sm"
                       disabled={addingToPlaylist === playlist.id}
                       onClick={(e) => {
@@ -209,8 +209,8 @@ export default function AddToPlaylistModal({ show, onClose, song }) {
           </div>
 
           <div className="modal-footer border-0 pt-0">
-            <button 
-              type="button" 
+            <button
+              type="button"
               className="btn btn-outline-secondary"
               onClick={handleClose}
             >

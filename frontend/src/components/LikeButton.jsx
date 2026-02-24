@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { likePost, unlikePost } from '../api/likeService';
+import { checkPostLike, getLikesCount } from '../api/socialService';
 import { FaHeart, FaRegHeart } from 'react-icons/fa';
 
 const LikeButton = ({ 
@@ -20,6 +21,37 @@ const LikeButton = ({
     setIsLiked(initialLiked);
     setLikesCount(initialCount);
   }, [initialLiked, initialCount]);
+
+  useEffect(() => {
+    if (!postId) return;
+
+    let cancelled = false;
+    const hydrate = async () => {
+      try {
+        const count = await getLikesCount(postId, 'POST');
+        if (!cancelled && typeof count === 'number') setLikesCount(count);
+      } catch {
+        // best-effort
+      }
+
+      if (!user) {
+        if (!cancelled) setIsLiked(false);
+        return;
+      }
+
+      try {
+        const res = await checkPostLike(postId);
+        if (!cancelled && typeof res?.liked === 'boolean') setIsLiked(res.liked);
+      } catch {
+        // best-effort
+      }
+    };
+
+    hydrate();
+    return () => {
+      cancelled = true;
+    };
+  }, [postId, user]);
 
   const handleLike = async (e) => {
     e.preventDefault();

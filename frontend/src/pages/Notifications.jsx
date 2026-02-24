@@ -2,45 +2,86 @@ import { useState, useEffect } from "react";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useAuth } from "../contexts/AuthContext";
 import MainLayout from "../components/MainLayout";
-import { useWebSocket } from "../hooks/useWebSocket";
-import { WS_ENDPOINTS } from "../config/api.config";
+import { useStompWebSocket } from "../hooks/useStompWebSocket";
+import { getUserNotifications, markAsRead as markAsReadApi, markAllAsRead as markAllAsReadApi } from "../api/notificationService";
 import { FaBell, FaHeart, FaComment, FaUserPlus, FaMusic, FaShare, FaCheck, FaCheckDouble, FaPlug } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
+import {
+  extractActorIdFromNotification,
+  getUserAvatarUrl,
+  getUserByIdCached,
+  getUserDisplayName,
+  stripActorPrefix,
+} from "../utils/notificationEnrichment";
+import { getNotificationDestination } from "../utils/notificationNavigation";
 
 export default function Notifications() {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
 
-  // WebSocket connection for real-time notifications
-  const { isConnected, connectionStatus, lastMessage } = useWebSocket(
-    WS_ENDPOINTS.notifications,
+  const formatCreatedAt = (createdAt) => {
+    try {
+      if (!createdAt) return "Just now";
+      if (typeof createdAt === "string") {
+        const d = new Date(createdAt);
+        return Number.isNaN(d.getTime()) ? "Just now" : d.toLocaleString();
+      }
+      if (Array.isArray(createdAt)) {
+        const [y, m, day, h = 0, min = 0, s = 0] = createdAt;
+        const d = new Date(y, (m || 1) - 1, day || 1, h, min, s);
+        return Number.isNaN(d.getTime()) ? "Just now" : d.toLocaleString();
+      }
+      return "Just now";
+    } catch {
+      return "Just now";
+    }
+  };
+
+  const mapBackendNotification = async (n) => {
+    const fallbackTitle = n?.title || "System";
+    const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackTitle)}&background=666&color=fff`;
+
+    const actorId = extractActorIdFromNotification(n);
+    const actorUser = actorId ? await getUserByIdCached(actorId) : null;
+    const actorName = getUserDisplayName(actorUser) || fallbackTitle;
+    const actorAvatar = getUserAvatarUrl(actorUser) || fallbackAvatar;
+
+    return {
+      id: n?.id || Date.now(),
+      type: n?.type || "general",
+      actorId,
+      user: { name: actorName, avatar: actorAvatar },
+      content: stripActorPrefix(n?.message || "", actorId),
+      target: n?.referenceId,
+      time: formatCreatedAt(n?.createdAt),
+      read: Boolean(n?.read ?? n?.isRead),
+    };
+  };
+
+  // WebSocket connection for real-time notifications using STOMP
+  const { isConnected } = useStompWebSocket(
+    '/ws/notifications',
     {
-      autoConnect: true,
-      onMessage: (message) => {
-        console.log('New notification received:', message);
-        if (message.type === 'notification') {
-          // Add new notification to the top of the list
-          setNotifications(prev => [{
-            id: message.id || Date.now(),
-            type: message.notificationType || 'general',
-            user: message.user || { name: 'System', avatar: 'https://ui-avatars.com/api/?name=System&background=666&color=fff' },
-            content: message.content || message.message,
-            target: message.target,
-            time: message.timestamp || 'Just now',
-            read: false
-          }, ...prev]);
-        }
+      onMessage: async (notification) => {
+        console.log('New notification received via STOMP:', notification);
+        // Map notification from backend format
+        const mapped = await mapBackendNotification(notification);
+        setNotifications(prev => [mapped, ...prev]);
       },
-      onOpen: () => console.log('Notifications WebSocket connected'),
-      onClose: () => console.log('Notifications WebSocket disconnected'),
+      onConnect: () => console.log('Notifications WebSocket connected'),
+      onDisconnect: () => console.log('Notifications WebSocket disconnected'),
       onError: (error) => console.error('Notifications WebSocket error:', error)
     }
   );
 
   useEffect(() => {
-    // Mock notifications data (initial load)
+    let cancelled = false;
+
+    // Mock notifications data (fallback only)
     const mockNotifications = [
       {
         id: 1,
@@ -88,16 +129,55 @@ export default function Notifications() {
       }
     ];
 
-    setTimeout(() => {
-      setNotifications(mockNotifications);
-      setLoading(false);
-    }, 500);
-  }, []);
+    const load = async () => {
+      setLoading(true);
+
+      // No auth user -> show empty state, no mock.
+      if (!user) {
+        console.warn('[Notifications] No user authenticated, showing empty state');
+        if (!cancelled) {
+          setNotifications([]);
+          setLoading(false);
+        }
+        return;
+      }
+
+      console.log('[Notifications] Loading notifications for user:', user?.id || user?.email);
+
+      try {
+        const page = await getUserNotifications(0, 50);
+        const content = Array.isArray(page?.content) ? page.content : [];
+        console.log('[Notifications] Backend returned', content.length, 'notifications');
+        const mapped = await Promise.all(content.map(mapBackendNotification));
+
+        if (!cancelled) {
+          console.log('[Notifications] Displaying', mapped.length, 'real notifications');
+          setNotifications(mapped);
+          setLoading(false);
+        }
+      } catch (e) {
+        // Backend down/unreachable -> fallback to mock
+        console.error('[Notifications] ❌ Failed to load from backend, using mock data. Error:', e.message);
+        console.error('[Notifications] Full error:', e);
+        if (!cancelled) {
+          setNotifications(mockNotifications);
+          setLoading(false);
+        }
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   const getIcon = (type) => {
     switch(type) {
       case "like": return <FaHeart className="text-danger" />;
+      case "comment_like": return <FaHeart className="text-danger" />;
       case "comment": return <FaComment className="text-primary" />;
+      case "comment_reply": return <FaComment className="text-primary" />;
       case "follow": return <FaUserPlus className="text-success" />;
       case "share": return <FaShare className="text-info" />;
       case "new_music": return <FaMusic className="text-warning" />;
@@ -106,13 +186,32 @@ export default function Notifications() {
   };
 
   const markAsRead = (id) => {
-    setNotifications(prev => 
-      prev.map(notif => notif.id === id ? {...notif, read: true} : notif)
+    setNotifications(prev =>
+      prev.map(notif => notif.id === id ? { ...notif, read: true } : notif)
     );
+
+    // Persist best-effort
+    markAsReadApi(id).catch((e) => {
+      console.error("Failed to mark notification as read", e);
+    });
+  };
+
+  const handleNotificationClick = (notif) => {
+    if (!notif) return;
+    markAsRead(notif.id);
+    const dest = getNotificationDestination(notif);
+    if (dest?.to) {
+      navigate(dest.to, dest.state ? { state: dest.state } : undefined);
+    }
   };
 
   const markAllAsRead = () => {
     setNotifications(prev => prev.map(notif => ({...notif, read: true})));
+
+    // Persist best-effort
+    markAllAsReadApi().catch((e) => {
+      console.error("Failed to mark all notifications as read", e);
+    });
   };
 
   const filteredNotifications = filter === "all" 
@@ -139,7 +238,7 @@ export default function Notifications() {
           >
             <FaPlug />
             <span style={{ fontWeight: 500 }}>
-              {isConnected ? 'Real-time notifications active' : `Connection ${connectionStatus}`}
+              {isConnected ? 'Real-time notifications active' : 'Connecting...'}
             </span>
           </div>
         )}
@@ -215,7 +314,7 @@ export default function Notifications() {
               <div
                 key={notif.id}
                 className={`card notification-item ${!notif.read ? 'notification-unread' : ''}`}
-                onClick={() => markAsRead(notif.id)}
+                onClick={() => handleNotificationClick(notif)}
                 style={{
                   borderRadius: 16,
                   cursor: "pointer",

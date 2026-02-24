@@ -17,11 +17,17 @@ import java.time.LocalDateTime;
 public class GroupMessage {
     @Id
     private String id;
-    private String groupConversationId;
+    private String groupConversationId; // For regular group conversations
+    private String groupId; // For Artist Group Chat
     private String senderId;
+    private String senderName;
     private String content;
     private MessageType messageType;
     private LocalDateTime sentAt;
+
+    // Soft delete
+    @Builder.Default
+    private boolean isDeleted = false;
 
     // Approval system
     @Builder.Default

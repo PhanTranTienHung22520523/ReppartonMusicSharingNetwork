@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import MainLayout from "../components/MainLayout";
+import SongCard from "../components/SongCard";
+import { getSongsByGenre } from "../api/songService";
+import { getAllGenres } from "../api/genreService";
 import { FaMusic, FaGuitar, FaMicrophone, FaDrum, FaCompactDisc } from "react-icons/fa";
 
 const GENRE_ICONS = {
@@ -22,19 +25,12 @@ export default function Genres() {
 
   const loadGenres = async () => {
     try {
-      // Mock data - replace with actual API call
-      setGenres([
-        { id: 1, name: "Pop", songCount: 1250, trending: true, description: "Popular music genre" },
-        { id: 2, name: "Rock", songCount: 890, trending: false, description: "Rock and roll music" },
-        { id: 3, name: "Jazz", songCount: 456, trending: true, description: "Jazz and blues" },
-        { id: 4, name: "Electronic", songCount: 2100, trending: true, description: "Electronic dance music" },
-        { id: 5, name: "Classical", songCount: 678, trending: false, description: "Classical music" },
-        { id: 6, name: "Hip Hop", songCount: 1450, trending: true, description: "Hip hop and rap" },
-        { id: 7, name: "R&B", songCount: 820, trending: false, description: "Rhythm and blues" },
-        { id: 8, name: "Country", songCount: 560, trending: false, description: "Country music" },
-      ]);
+      const data = await getAllGenres();
+      const list = Array.isArray(data) ? data : (data?.data ?? []);
+      setGenres(Array.isArray(list) ? list : []);
     } catch (error) {
       console.error("Failed to load genres:", error);
+      setGenres([]);
     } finally {
       setLoading(false);
     }
@@ -42,12 +38,21 @@ export default function Genres() {
 
   const handleGenreClick = async (genre) => {
     setSelectedGenre(genre);
-    // Load songs for this genre
-    // Mock data
-    setSongs([
-      { id: 1, title: `${genre.name} Song 1`, artist: "Artist Name", plays: 125000 },
-      { id: 2, title: `${genre.name} Song 2`, artist: "Artist Name", plays: 98000 },
-    ]);
+    setLoading(true);
+    try {
+      const fetchedSongs = await getSongsByGenre(genre.name);
+      setSongs(fetchedSongs);
+    } catch (error) {
+      console.error("Error fetching songs for genre:", error);
+      setSongs([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBack = () => {
+    setSelectedGenre(null);
+    setSongs([]);
   };
 
   if (loading) {
@@ -57,6 +62,58 @@ export default function Genres() {
           <div className="spinner-border text-primary" role="status">
             <span className="visually-hidden">Loading...</span>
           </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (selectedGenre) {
+    return (
+      <MainLayout>
+        <div className="genre-detail-page">
+          <button 
+            className="btn btn-link text-decoration-none mb-4 ps-0" 
+            onClick={handleBack}
+            style={{ color: "var(--text-color)", fontSize: "1.1rem" }}
+          >
+            ← Back to Genres
+          </button>
+          
+          <div className="d-flex align-items-center mb-5 p-5 rounded-4" 
+            style={{ 
+              background: "var(--primary-gradient)",
+              color: "white",
+              boxShadow: "0 10px 30px rgba(0,0,0,0.2)"
+            }}
+          >
+            <div style={{ fontSize: 80, marginRight: 40 }}>
+              {GENRE_ICONS[selectedGenre.name] || <FaMusic />}
+            </div>
+            <div>
+              <h1 className="display-4 fw-bold mb-2">{selectedGenre.name}</h1>
+              <p className="lead mb-0 opacity-75">{selectedGenre.description}</p>
+              <div className="mt-3 badge bg-white text-primary rounded-pill px-3 py-2">
+                {selectedGenre.songCount} Songs
+              </div>
+            </div>
+          </div>
+
+          <h3 className="mb-4" style={{ color: "var(--text-color)" }}>Popular in {selectedGenre.name}</h3>
+          
+          {songs.length > 0 ? (
+            <div className="row g-4">
+              {songs.map((song) => (
+                <div key={song.id} className="col-md-3 col-sm-6">
+                  <SongCard song={song} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-5 text-muted">
+              <FaMusic size={48} className="mb-3 opacity-50" />
+              <p>No songs found in this genre yet.</p>
+            </div>
+          )}
         </div>
       </MainLayout>
     );
@@ -139,36 +196,23 @@ export default function Genres() {
 
         {/* Selected Genre Songs */}
         {selectedGenre && (
-          <div className="mb-5">
+          <div id="genre-songs" className="mb-5">
             <h3 className="mb-3" style={{ color: "var(--text-color)" }}>
               Popular in {selectedGenre.name}
             </h3>
-            <div className="list-group">
-              {songs.map((song, index) => (
-                <div
-                  key={song.id}
-                  className="list-group-item d-flex align-items-center"
-                  style={{
-                    background: "var(--card-color)",
-                    border: "1px solid var(--border-color)",
-                    marginBottom: 8,
-                  }}
-                >
-                  <span className="me-3 fw-bold" style={{ color: "var(--text-muted)", width: 30 }}>
-                    {index + 1}
-                  </span>
-                  <div className="flex-grow-1">
-                    <h6 className="mb-0" style={{ color: "var(--text-color)" }}>{song.title}</h6>
-                    <small style={{ color: "var(--text-muted)" }}>{song.artist}</small>
+            {songs.length > 0 ? (
+              <div className="row g-3">
+                {songs.map((song) => (
+                  <div key={song.id} className="col-md-6 col-lg-4">
+                    <SongCard song={song} />
                   </div>
-                  <div className="text-end">
-                    <small style={{ color: "var(--text-muted)" }}>
-                      {song.plays.toLocaleString()} plays
-                    </small>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-4 text-muted">
+                No songs found in this genre.
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -9,6 +9,7 @@ public class Notification {
     @Id
     private String id;
     private String userId;
+    private String actorId; // ID of the user who performed the action
     private String type; // "like", "comment", "follow", "share", "post"
     private String title;
     private String message;
@@ -35,6 +36,9 @@ public class Notification {
     
     public String getUserId() { return userId; }
     public void setUserId(String userId) { this.userId = userId; }
+    
+    public String getActorId() { return actorId; }
+    public void setActorId(String actorId) { this.actorId = actorId; }
     
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }

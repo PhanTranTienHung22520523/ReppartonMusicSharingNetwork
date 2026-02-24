@@ -141,6 +141,7 @@ export default function Playlist() {
                   <div className="col-lg-4 col-md-6" key={playlist.id}>
                     <PlaylistCard
                       playlist={playlist}
+                      currentUser={user}
                       isOwner={true}
                       onEdit={handleEditPlaylist}
                       onDelete={(playlist) => {

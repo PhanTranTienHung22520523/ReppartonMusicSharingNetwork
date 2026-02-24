@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getRecommendationsByUser, checkAIHealth } from '../api/aiService';
-import songService from '../api/songService';
+import * as songService from '../api/songService';
+import { getListeningHistory } from '../api/analyticsService';
 import SongCard from '../components/SongCard';
 import { useAuth } from '../contexts/AuthContext';
 import './Recommendations.css';
@@ -43,7 +44,7 @@ const Recommendations = () => {
 
         if (aiServiceAvailable) {
           // Get AI-powered recommendations
-          const history = await getListeningHistory();
+          const history = await fetchListeningHistory();
           const result = await getRecommendationsByUser(user.id, history, 20);
           
           if (result.recommendations && result.recommendations.length > 0) {
@@ -78,9 +79,9 @@ const Recommendations = () => {
   }, [user, aiServiceAvailable]);
 
   // Get user's listening history
-  const getListeningHistory = async () => {
+  const fetchListeningHistory = async () => {
     try {
-      const history = await songService.getListeningHistory(user.id);
+      const history = await getListeningHistory('all');
       return history.map(h => ({
         song_id: h.songId,
         play_count: h.playCount,
@@ -96,7 +97,7 @@ const Recommendations = () => {
   // Fallback: Load popular songs
   const loadPopularSongs = async () => {
     try {
-      const popular = await songService.getPopularSongs(20);
+      const popular = await songService.getTrendingSongs();
       setSongs(popular);
       setRecommendations(popular.map((s, i) => ({
         song_id: s.id,

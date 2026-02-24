@@ -1,7 +1,13 @@
+com\DA2\playlistservice\service\PlaylistService.class
+com\DA2\playlistservice\PlaylistServiceApplication.class
+com\DA2\playlistservice\dto\UserProfileResponseDTO.class
+com\DA2\playlistservice\entity\PlaylistFollower.class
+com\DA2\playlistservice\config\PlaylistSecurityConfig.class
+com\DA2\playlistservice\client\UserServiceClient.class
+com\DA2\playlistservice\dto\PlaylistSearchResponse.class
 com\DA2\playlistservice\controller\PlaylistController.class
 com\DA2\playlistservice\repository\PlaylistFollowerRepository.class
 com\DA2\playlistservice\repository\PlaylistRepository.class
-com\DA2\playlistservice\service\PlaylistService.class
-com\DA2\playlistservice\PlaylistServiceApplication.class
 com\DA2\playlistservice\entity\Playlist.class
-com\DA2\playlistservice\entity\PlaylistFollower.class
+com\DA2\playlistservice\dto\UserSummary.class
+com\DA2\playlistservice\config\RestTemplateConfig.class

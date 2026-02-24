@@ -11,6 +11,8 @@ public interface DuoMessageRepository extends MongoRepository<DuoMessage, String
     List<DuoMessage> findByConversationIdOrderBySentAtAsc(String conversationId);
     
     List<DuoMessage> findByConversationIdOrderBySentAtDesc(String conversationId);
+
+    DuoMessage findFirstByConversationIdOrderBySentAtDesc(String conversationId);
     
     List<DuoMessage> findBySenderIdOrReceiverId(String senderId, String receiverId);
     

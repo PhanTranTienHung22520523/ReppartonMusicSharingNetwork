@@ -1,9 +1,16 @@
 import Navbar from "./Navbar";
-import MusicPlayerBar from "./MusicPlayerBar";
+import { useAuth } from "../contexts/AuthContext";
+import OnboardingModal from "./OnboardingModal";
 
 export default function MainLayout({ children }) {
+  const { user, isAuthenticated } = useAuth();
+
+  // Check if user is authenticated but not yet onboarded
+  const showOnboarding = isAuthenticated() && user && user.isOnboarded === false;
+
   return (
     <div className="main-layout">
+      {showOnboarding && <OnboardingModal />}
       <Navbar />
       <main
         style={{
@@ -18,7 +25,6 @@ export default function MainLayout({ children }) {
           {children}
         </div>
       </main>
-      <MusicPlayerBar />
     </div>
   );
 }

@@ -1,14 +1,78 @@
 import { API_ENDPOINTS, getAuthToken, createHeaders } from '../config/api.config';
+import { getDeviceFingerprint, getBrowserName, getOSName } from './deviceService';
 
-const API_URL = API_ENDPOINTS.users;
+const AUTH_URL = API_ENDPOINTS.auth;
+const USER_URL = API_ENDPOINTS.users;
+
+function handleAuthResponse(body, fallbackEmail) {
+  if (!body?.success) {
+    throw new Error(body?.message || "Authentication failed");
+  }
+
+  const payload = body.data || {};
+  const user = payload.user || {};
+  const token = payload.accessToken || payload.token;
+
+  if (!token) {
+    throw new Error("Máy chủ không trả về access token");
+  }
+
+  const normalizedUser = {
+    ...user,
+    email: user.email || fallbackEmail,
+    id: user.id || user._id,
+    token,
+    refreshToken: payload.refreshToken,
+  };
+
+  localStorage.setItem("user", JSON.stringify(normalizedUser));
+  return normalizedUser;
+}
+
+function splitName(fullName = "") {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) {
+    return { firstName: "", lastName: "" };
+  }
+  const firstName = parts.shift();
+  const lastName = parts.join(" ");
+  return { firstName, lastName };
+}
 
 // Login
-export async function login(email, password) {
+export async function login(identifier, password) {
   try {
-    const res = await fetch(`${API_URL}/login`, {
+    let deviceId;
+    let deviceName;
+    let userAgent;
+    try {
+      deviceId = getDeviceFingerprint();
+      if (!deviceId) {
+        const stored = localStorage.getItem('deviceId');
+        if (stored) {
+          deviceId = stored;
+        } else {
+          const fallback = (globalThis.crypto?.randomUUID?.() || `dev_${Date.now()}_${Math.random().toString(16).slice(2)}`);
+          localStorage.setItem('deviceId', fallback);
+          deviceId = fallback;
+        }
+      }
+      deviceName = `${getBrowserName()} on ${getOSName()}`;
+      userAgent = navigator?.userAgent;
+    } catch {
+      // Best-effort only (e.g., non-browser test env)
+    }
+
+    const res = await fetch(`${AUTH_URL}/login`, {
       method: "POST",
       headers: createHeaders(),
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({
+        usernameOrEmail: identifier,
+        password,
+        deviceId,
+        deviceName,
+        userAgent,
+      }),
     });
     
     const data = await res.json();
@@ -16,22 +80,8 @@ export async function login(email, password) {
     if (!res.ok) {
       throw new Error(data.message || "Login failed");
     }
-    
-    if (data.success && data.token) {
-      // Store the token and user info
-      const userInfo = { 
-        token: data.token,
-        email: email,
-        // Include all user fields from backend
-        ...(data.user || {}),
-        // Ensure id is available 
-        id: data.user?.id
-      };
-      localStorage.setItem("user", JSON.stringify(userInfo));
-      return userInfo;
-    } else {
-      throw new Error(data.message || "Invalid credentials");
-    }
+
+    return handleAuthResponse(data, identifier);
   } catch (error) {
     throw new Error(error.message || "Network error");
   }
@@ -40,16 +90,17 @@ export async function login(email, password) {
 // Register
 export async function register({ email, password, username, fullName }) {
   try {
-    const res = await fetch(`${API_URL}/register`, {
+    const { firstName, lastName } = splitName(fullName);
+
+    const res = await fetch(`${AUTH_URL}/register`, {
       method: "POST",
       headers: createHeaders(),
       body: JSON.stringify({
         email,
         password,
-        confirmPassword: password, // Add confirmPassword same as password
         username,
-        fullName,
-        role: "USER"
+        firstName,
+        lastName,
       }),
     });
     
@@ -58,13 +109,53 @@ export async function register({ email, password, username, fullName }) {
     if (!res.ok) {
       throw new Error(data.message || "Registration failed");
     }
-    
-    if (data.success && data.user) {
-      // After registration, automatically login
-      return await login(email, password);
-    } else {
-      throw new Error(data.message || "Registration failed");
+
+    if (data?.data?.accessToken || data?.data?.token) {
+      return handleAuthResponse(data, email);
     }
+
+    // Fallback: if backend skips tokens, login manually
+    return await login(email, password);
+  } catch (error) {
+    throw new Error(error.message || "Network error");
+  }
+}
+
+// Cancel pending artist verification
+export async function cancelArtistApplication() {
+  try {
+    const userStr = localStorage.getItem("user");
+    if (!userStr) {
+      throw new Error("Bạn chưa đăng nhập");
+    }
+    const currentUser = JSON.parse(userStr);
+    const userId = currentUser?.id;
+    if (!userId) {
+      throw new Error("Không tìm thấy userId");
+    }
+
+    const res = await fetch(`${AUTH_URL}/artist/cancel`, {
+      method: "POST",
+      headers: {
+        ...createHeaders(true),
+        "X-User-Id": userId,
+      },
+    });
+
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw new Error(data?.message || "Hủy đăng ký nghệ sĩ thất bại");
+    }
+
+    // backend returns ApiResponse<User>
+    const updatedUser = data?.data || data?.user || null;
+    if (updatedUser && typeof updatedUser === "object") {
+      const merged = { ...currentUser, ...updatedUser };
+      localStorage.setItem("user", JSON.stringify(merged));
+      return merged;
+    }
+
+    return currentUser;
   } catch (error) {
     throw new Error(error.message || "Network error");
   }
@@ -75,7 +166,7 @@ export async function logout() {
   try {
     const token = getAuthToken();
     if (token) {
-      await fetch(`${API_URL}/logout`, {
+      await fetch(`${AUTH_URL}/logout`, {
         method: "POST",
         headers: createHeaders(true),
       });
@@ -97,7 +188,7 @@ export async function getCurrentUser() {
     if (!userInfo.token || !userInfo.id) return null;
     
     // Use the existing /{id} endpoint
-    const res = await fetch(`${API_URL}/${userInfo.id}`, {
+    const res = await fetch(`${USER_URL}/${userInfo.id}`, {
       headers: createHeaders(true),
     });
     
@@ -132,7 +223,7 @@ export async function getCurrentUser() {
 // Refresh token
 export async function refreshToken() {
   try {
-    const res = await fetch(`${API_URL}/refresh`, {
+    const res = await fetch(`${AUTH_URL}/refresh`, {
       method: "POST",
       headers: createHeaders(true),
     });
@@ -153,5 +244,131 @@ export async function refreshToken() {
   } catch (error) {
     localStorage.removeItem("user");
     throw error;
+  }
+}
+
+// ========== EMAIL VERIFICATION ==========
+
+async function safeReadJson(res) {
+  const text = await res.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { message: text };
+  }
+}
+
+export async function verifyEmail(token) {
+  const encodedToken = encodeURIComponent(token ?? "");
+  const res = await fetch(`${AUTH_URL}/verify-email?token=${encodedToken}`, {
+    method: "GET",
+    headers: createHeaders(),
+  });
+
+  const data = await safeReadJson(res);
+
+  if (!res.ok) {
+    throw new Error(data.message || res.statusText || "Email verification failed");
+  }
+
+  return data;
+}
+
+export async function resendVerification(email) {
+  const res = await fetch(`${AUTH_URL}/resend-verification`, {
+    method: "POST",
+    headers: createHeaders(),
+    body: JSON.stringify({ email }),
+  });
+
+  const data = await safeReadJson(res);
+
+  if (!res.ok) {
+    throw new Error(data.message || res.statusText || "Failed to resend verification email");
+  }
+
+  return data;
+}
+
+// ========== PASSWORD RESET ==========
+
+export async function forgotPassword(email) {
+  const res = await fetch(`${AUTH_URL}/forgot-password`, {
+    method: "POST",
+    headers: createHeaders(),
+    body: JSON.stringify({ email }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to send reset email");
+  }
+
+  return data;
+}
+
+export async function resetPassword(token, newPassword) {
+  const res = await fetch(`${AUTH_URL}/reset-password`, {
+    method: "POST",
+    headers: createHeaders(),
+    body: JSON.stringify({ token, newPassword }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to reset password");
+  }
+
+  return data;
+}
+
+export async function changePassword(oldPassword, newPassword) {
+  const res = await fetch(`${AUTH_URL}/change-password`, {
+    method: "POST",
+    headers: createHeaders(true),
+    body: JSON.stringify({ oldPassword, newPassword }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to change password");
+  }
+
+  return data;
+}
+
+export async function sendVerificationCode(email) {
+  try {
+    const res = await fetch(`${AUTH_URL}/send-verification-code`, {
+      method: "POST",
+      headers: createHeaders(),
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await safeReadJson(res);
+    if (!res.ok) throw new Error(data.message || res.statusText || "Failed to send verification code");
+    return data;
+  } catch (err) {
+    throw new Error(err.message || "Network error");
+  }
+}
+
+export async function verifyCode(email, code) {
+  try {
+    const res = await fetch(`${AUTH_URL}/verify-code`, {
+      method: "POST",
+      headers: createHeaders(),
+      body: JSON.stringify({ email, code }),
+    });
+
+    const data = await safeReadJson(res);
+    if (!res.ok) throw new Error(data.message || res.statusText || "Verification failed");
+    return data;
+  } catch (err) {
+    throw new Error(err.message || "Network error");
   }
 }

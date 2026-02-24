@@ -1,12 +1,14 @@
 server:
-  port: 8092
+  port: ${SERVER_PORT:8095}
 
 spring:
   application:
     name: report-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:development}
   data:
     mongodb:
-      uri: mongodb://localhost:27017/reportdb
+      uri: ${MONGODB_URI:mongodb://localhost:27017/reportdb}
   cloud:
     discovery:
       enabled: true
@@ -14,7 +16,7 @@ spring:
 eureka:
   client:
     serviceUrl:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
     fetch-registry: true
     register-with-eureka: true
   instance:
@@ -29,3 +31,9 @@ management:
   endpoint:
     health:
       show-details: always
+
+# Enable debug logging for JWT/shared security to help diagnose auth failures
+logging:
+  level:
+    com.DA2.shared.security: DEBUG
+    com.DA2.reportservice: DEBUG

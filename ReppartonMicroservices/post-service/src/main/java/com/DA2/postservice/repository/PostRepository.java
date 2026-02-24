@@ -23,9 +23,13 @@ public interface PostRepository extends MongoRepository<Post, String> {
     List<Post> findByIsPrivateFalseOrderByCreatedAtDesc();
     Page<Post> findByIsPrivateFalseOrderByCreatedAtDesc(Pageable pageable);
     
-    // Find trending posts (most liked in last 7 days)
-    @Query(value = "{ 'createdAt': { $gte: ?0 } }", sort = "{ 'likes': -1 }")
-    List<Post> findTrendingPosts(LocalDateTime since);
+    // Find trending posts (most liked)
+    // Note: include documents missing `createdAt` (legacy/seed data), so trending doesn't return empty.
+    @Query("{ $or: [ { 'isPrivate': false }, { 'isPrivate': null } ] }")
+    List<Post> findTrendingPostsAll(Pageable pageable);
+
+    @Query("{ $and: [ { $or: [ { 'isPrivate': false }, { 'isPrivate': null } ] }, { $or: [ { 'createdAt': { $gte: ?0 } }, { 'createdAt': null } ] } ] }")
+    List<Post> findTrendingPostsSince(LocalDateTime since, Pageable pageable);
     
     // Count posts by user
     long countByUserId(String userId);

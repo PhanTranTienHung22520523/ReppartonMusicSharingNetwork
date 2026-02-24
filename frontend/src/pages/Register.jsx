@@ -18,14 +18,15 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [passwordStrength, setPasswordStrength] = useState({ score: 0, label: '', color: '' });
+  const [justRegistered, setJustRegistered] = useState(false);
   const navigate = useNavigate();
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user) {
+    if (user && !justRegistered) {
       navigate("/");
     }
-  }, [user, navigate]);
+  }, [user, justRegistered, navigate]);
 
   // Password strength calculator
   const calculatePasswordStrength = (password) => {
@@ -142,14 +143,16 @@ export default function Register() {
     
     setLoading(true);
     try {
+      setJustRegistered(true);
       await register({
         email: form.email,
         password: form.password,
         username: form.username,
         fullName: form.fullName,
       });
-      navigate("/");
+      navigate(`/verify-email?email=${encodeURIComponent(form.email)}`);
     } catch (err) {
+      setJustRegistered(false);
       setError(err.message || "Đăng ký thất bại. Vui lòng thử lại.");
     } finally {
       setLoading(false);

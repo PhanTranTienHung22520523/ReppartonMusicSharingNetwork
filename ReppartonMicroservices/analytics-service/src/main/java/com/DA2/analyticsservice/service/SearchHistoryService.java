@@ -23,10 +23,10 @@ public class SearchHistoryService {
     }
 
     public List<SearchHistory> getSearchesByDateRange(LocalDateTime start, LocalDateTime end) {
-        return repository.findByDateRange(start, end);
+        return repository.findBySearchedAtBetween(start, end);
     }
 
     public List<SearchHistory> findByKeyword(String keyword) {
-        return repository.findByQueryContaining(keyword);
+        return repository.findBySearchQueryContainingIgnoreCase(keyword);
     }
 }

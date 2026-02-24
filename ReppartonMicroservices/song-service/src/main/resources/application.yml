@@ -1,24 +1,24 @@
 server:
   port: 8082
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: always
 
 spring:
   application:
     name: song-service
   data:
     mongodb:
-      uri: ${MONGODB_URI}
+      # Use the songs database that actually holds the seeded data
+      uri: ${MONGODB_URI_SONGS:${MONGODB_URI:mongodb://localhost:27017/repparton_songs}}
   servlet:
     multipart:
       max-file-size: ${UPLOAD_MAX_FILE_SIZE:100MB}
       max-request-size: ${UPLOAD_MAX_REQUEST_SIZE:100MB}
   cache:
-    type: redis
-  redis:
-    host: ${REDIS_HOST:localhost}
-    port: ${REDIS_PORT:6379}
-    password: ${REDIS_PASSWORD:}
-    timeout: ${REDIS_TIMEOUT:2000ms}
-    database: ${REDIS_DATABASE:0}
+    # Disable cache to avoid any Redis requirement
+    type: none
 
 management:
   endpoints:
@@ -34,3 +34,20 @@ logging:
 ai:
   service:
     url: ${AI_SERVICE_URL:http://localhost:5000}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    prefer-ip-address: true
+    hostname: ${EUREKA_INSTANCE_HOST:host.docker.internal}
+    non-secure-port: ${SERVER_PORT:8082}
+
+# Internal service URLs (when calling other services directly)
+file:
+  storage:
+    service:
+      url: ${FILE_STORAGE_SERVICE_URL:http://localhost:8096}

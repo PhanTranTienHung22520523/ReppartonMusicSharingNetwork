@@ -1,16 +1,19 @@
-/* Music Player Bar Styles */
+/* Music Player Bar with Glass Morphism */
 .music-player-bar {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   height: 80px;
-  background: var(--surface-color);
-  border-top: 1px solid var(--border-color);
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 
+    0 -8px 32px rgba(0, 0, 0, 0.12),
+    0 -4px 16px rgba(111, 66, 193, 0.08);
   z-index: 999;
-  backdrop-filter: blur(10px);
-  animation: slideInUp 0.4s ease;
+  animation: slideInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @keyframes slideInUp {
@@ -26,12 +29,17 @@
 .music-timeline {
   -webkit-appearance: none;
   appearance: none;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 2px;
+  height: 12px;
+  padding: 0;
+  box-sizing: border-box;
+  background: transparent;
+  border-radius: 6px;
   outline: none;
   cursor: pointer;
   position: relative;
+  margin: 0;
+  vertical-align: middle;
+  align-self: center;
 }
 
 .music-timeline::-webkit-slider-thumb {
@@ -47,6 +55,7 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
   position: relative;
   z-index: 2;
+  margin-top: -4px;
 }
 
 .music-timeline::-moz-range-thumb {
@@ -63,7 +72,13 @@
 
 .music-timeline::-webkit-slider-runnable-track {
   height: 4px;
-  background: rgba(255, 255, 255, 0.3);
+  background: linear-gradient(
+    to right,
+    #1db954 0%,
+    #1db954 var(--progress, 0%),
+    rgba(255, 255, 255, 0.3) var(--progress, 0%),
+    rgba(255, 255, 255, 0.3) 100%
+  );
   border-radius: 2px;
 }
 
@@ -87,28 +102,23 @@
   opacity: 1;
 }
 
-.music-timeline::-webkit-slider-runnable-track {
-  height: 4px;
-  background: linear-gradient(
-    to right,
-    var(--primary-color) 0%,
-    var(--primary-color) var(--progress, 0%),
-    var(--border-color) var(--progress, 0%),
-    var(--border-color) 100%
-  );
-  border-radius: 4px;
-}
+
 
 /* Volume Slider - Spotify Style */
 .volume-slider {
   -webkit-appearance: none;
   appearance: none;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 2px;
+  height: 12px;
+  padding: 0;
+  box-sizing: border-box;
+  background: transparent;
+  border-radius: 6px;
   outline: none;
   cursor: pointer;
   position: relative;
+  margin: 0;
+  vertical-align: middle;
+  align-self: center;
 }
 
 .volume-slider::-webkit-slider-thumb {
@@ -124,6 +134,7 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
   position: relative;
   z-index: 2;
+  margin-top: -4px;
 }
 
 .volume-slider::-moz-range-thumb {
@@ -140,7 +151,13 @@
 
 .volume-slider::-webkit-slider-runnable-track {
   height: 4px;
-  background: rgba(255, 255, 255, 0.3);
+  background: linear-gradient(
+    to right,
+    #1db954 0%,
+    #1db954 var(--progress, 0%),
+    rgba(255, 255, 255, 0.3) var(--progress, 0%),
+    rgba(255, 255, 255, 0.3) 100%
+  );
   border-radius: 2px;
 }
 

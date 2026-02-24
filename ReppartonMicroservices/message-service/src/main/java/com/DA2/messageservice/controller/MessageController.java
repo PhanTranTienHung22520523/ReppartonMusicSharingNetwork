@@ -36,8 +36,8 @@ public class MessageController {
     // Get or create conversation between two users
     @GetMapping("/conversation")
     public ResponseEntity<Conversation> getConversation(
-            @RequestParam String user1Id,
-            @RequestParam String user2Id) {
+            @RequestParam("user1Id") String user1Id,
+            @RequestParam("user2Id") String user2Id) {
         try {
             Conversation conversation = messageService.getOrCreateConversation(user1Id, user2Id);
             return ResponseEntity.ok(conversation);
@@ -48,7 +48,7 @@ public class MessageController {
 
     // Get messages in a conversation
     @GetMapping("/conversation/{conversationId}")
-    public ResponseEntity<List<DuoMessage>> getMessages(@PathVariable String conversationId) {
+    public ResponseEntity<List<DuoMessage>> getMessages(@PathVariable("conversationId") String conversationId) {
         try {
             List<DuoMessage> messages = messageService.getMessages(conversationId);
             return ResponseEntity.ok(messages);
@@ -59,7 +59,7 @@ public class MessageController {
 
     // Get user's conversations
     @GetMapping("/user/{userId}/conversations")
-    public ResponseEntity<List<ConversationDTO>> getUserConversations(@PathVariable String userId) {
+    public ResponseEntity<List<ConversationDTO>> getUserConversations(@PathVariable("userId") String userId) {
         try {
             List<ConversationDTO> conversations = messageService.getUserConversations(userId);
             return ResponseEntity.ok(conversations);
@@ -70,7 +70,7 @@ public class MessageController {
 
     // Mark message as read
     @PutMapping("/{messageId}/read")
-    public ResponseEntity<Void> markAsRead(@PathVariable String messageId) {
+    public ResponseEntity<Void> markAsRead(@PathVariable("messageId") String messageId) {
         try {
             messageService.markAsRead(messageId);
             return ResponseEntity.ok().build();
@@ -82,8 +82,8 @@ public class MessageController {
     // Mark all messages in conversation as read
     @PutMapping("/conversation/{conversationId}/read")
     public ResponseEntity<Void> markConversationAsRead(
-            @PathVariable String conversationId,
-            @RequestParam String userId) {
+            @PathVariable("conversationId") String conversationId,
+            @RequestParam("userId") String userId) {
         try {
             messageService.markConversationAsRead(conversationId, userId);
             return ResponseEntity.ok().build();
@@ -95,8 +95,8 @@ public class MessageController {
     // Get unread message count
     @GetMapping("/conversation/{conversationId}/unread-count")
     public ResponseEntity<Long> getUnreadCount(
-            @PathVariable String conversationId,
-            @RequestParam String userId) {
+            @PathVariable("conversationId") String conversationId,
+            @RequestParam("userId") String userId) {
         try {
             long count = messageService.getUnreadCount(conversationId, userId);
             return ResponseEntity.ok(count);
@@ -107,7 +107,7 @@ public class MessageController {
 
     // Get all unread messages for user
     @GetMapping("/user/{userId}/unread")
-    public ResponseEntity<List<DuoMessage>> getUnreadMessages(@PathVariable String userId) {
+    public ResponseEntity<List<DuoMessage>> getUnreadMessages(@PathVariable("userId") String userId) {
         try {
             List<DuoMessage> messages = messageService.getUnreadMessages(userId);
             return ResponseEntity.ok(messages);
@@ -118,7 +118,7 @@ public class MessageController {
 
     // Delete conversation
     @DeleteMapping("/conversation/{conversationId}")
-    public ResponseEntity<Void> deleteConversation(@PathVariable String conversationId) {
+    public ResponseEntity<Void> deleteConversation(@PathVariable("conversationId") String conversationId) {
         try {
             messageService.deleteConversation(conversationId);
             return ResponseEntity.ok().build();

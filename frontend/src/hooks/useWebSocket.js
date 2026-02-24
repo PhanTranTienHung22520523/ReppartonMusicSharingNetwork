@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { getAuthToken } from '../config/api.config';
 
 /**
  * Custom hook for managing WebSocket connections
@@ -34,15 +35,33 @@ export function useWebSocket(url, options = {}) {
   const reconnectTimeoutRef = useRef(null);
   const shouldReconnectRef = useRef(true);
 
+  // Keep latest callbacks without forcing reconnects on every render
+  const callbacksRef = useRef({ onMessage, onOpen, onClose, onError });
+
+  useEffect(() => {
+    callbacksRef.current = { onMessage, onOpen, onClose, onError };
+  }, [onMessage, onOpen, onClose, onError]);
+
   const connect = useCallback(() => {
     if (!user || !url) {
       console.log('WebSocket: Cannot connect - missing user or URL');
       return;
     }
 
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      console.log('WebSocket: Already connected');
+    const currentState = wsRef.current?.readyState;
+    if (currentState === WebSocket.OPEN || currentState === WebSocket.CONNECTING) {
+      console.log('WebSocket: Already connected/connecting');
       return;
+    }
+
+    // If there is a stale socket instance, close it before creating a new one
+    if (wsRef.current) {
+      try {
+        wsRef.current.close();
+      } catch {
+        // ignore
+      }
+      wsRef.current = null;
     }
 
     try {
@@ -50,8 +69,8 @@ export function useWebSocket(url, options = {}) {
       console.log(`WebSocket: Connecting to ${url}...`);
       
       // Add token to URL if available
-      const token = localStorage.getItem('token');
-      const wsUrl = token ? `${url}?token=${token}` : url;
+      const token = getAuthToken();
+      const wsUrl = token ? `${url}?token=${encodeURIComponent(token)}` : url;
       
       wsRef.current = new WebSocket(wsUrl);
 
@@ -70,7 +89,7 @@ export function useWebSocket(url, options = {}) {
           }));
         }
         
-        onOpen?.(event);
+        callbacksRef.current.onOpen?.(event);
       };
 
       wsRef.current.onmessage = (event) => {
@@ -78,18 +97,18 @@ export function useWebSocket(url, options = {}) {
           const data = JSON.parse(event.data);
           console.log('WebSocket: Message received', data);
           setLastMessage(data);
-          onMessage?.(data);
+          callbacksRef.current.onMessage?.(data);
         } catch (error) {
           console.error('WebSocket: Error parsing message', error);
           setLastMessage(event.data);
-          onMessage?.(event.data);
+          callbacksRef.current.onMessage?.(event.data);
         }
       };
 
       wsRef.current.onerror = (event) => {
         console.error('WebSocket: Error occurred', event);
         setConnectionStatus('error');
-        onError?.(event);
+        callbacksRef.current.onError?.(event);
       };
 
       wsRef.current.onclose = (event) => {
@@ -97,7 +116,7 @@ export function useWebSocket(url, options = {}) {
         setIsConnected(false);
         setConnectionStatus('disconnected');
         wsRef.current = null;
-        onClose?.(event);
+        callbacksRef.current.onClose?.(event);
 
         // Attempt to reconnect
         if (shouldReconnectRef.current && 
@@ -118,9 +137,9 @@ export function useWebSocket(url, options = {}) {
     } catch (error) {
       console.error('WebSocket: Connection error', error);
       setConnectionStatus('error');
-      onError?.(error);
+      callbacksRef.current.onError?.(error);
     }
-  }, [url, user, reconnectInterval, maxReconnectAttempts, onMessage, onOpen, onClose, onError]);
+  }, [url, user, reconnectInterval, maxReconnectAttempts]);
 
   const disconnect = useCallback(() => {
     console.log('WebSocket: Disconnecting...');
@@ -175,9 +194,11 @@ export function useWebSocket(url, options = {}) {
       shouldReconnectRef.current = false;
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
       }
       if (wsRef.current) {
         wsRef.current.close();
+        wsRef.current = null;
       }
     };
   }, [autoConnect, user, connect]);

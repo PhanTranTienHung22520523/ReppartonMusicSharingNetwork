@@ -5,9 +5,16 @@ import com.DA2.storyservice.entity.StoryLike;
 import com.DA2.storyservice.entity.StoryView;
 import com.DA2.storyservice.service.StoryService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.UUID;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,10 +26,58 @@ public class StoryController {
     @Autowired
     private StoryService storyService;
 
-    // Create a new story
+    @Value("${app.upload.dir:./uploads}")
+    private String uploadDir;
+
+    @Value("${api.gateway.url:http://localhost:8090}")
+    private String apiGatewayUrl;
+
+    // Create a new story (JSON - legacy)
     @PostMapping
     public ResponseEntity<Story> createStory(@RequestBody Story story) {
         try {
+            Story createdStory = storyService.createStory(story);
+            return ResponseEntity.ok(createdStory);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    // Create a new story with file upload
+    @PostMapping("/create-auth")
+    public ResponseEntity<Story> createStoryWithFile(
+            @RequestParam("type") String type,
+            @RequestParam(value = "textContent", required = false) String textContent,
+            @RequestParam(value = "contentFile", required = false) MultipartFile contentFile,
+            @RequestParam(value = "isPrivate", defaultValue = "false") Boolean isPrivate,
+            @RequestHeader("X-User-Id") String userId) {
+        try {
+            Story story = new Story();
+            story.setUserId(userId);
+            story.setType(type == null ? null : type.toLowerCase());
+            story.setTextContent(textContent);
+            story.setPrivate(isPrivate);
+            
+            // Handle file upload if present
+            if (contentFile != null && !contentFile.isEmpty()) {
+                String original = contentFile.getOriginalFilename();
+                String safeName = original == null ? "file" : Paths.get(original).getFileName().toString();
+                String ext = "";
+                int dot = safeName.lastIndexOf('.');
+                if (dot >= 0 && dot < safeName.length() - 1) {
+                    ext = safeName.substring(dot);
+                }
+
+                String storedName = UUID.randomUUID() + ext;
+                Path storyDir = Paths.get(uploadDir, "stories").toAbsolutePath().normalize();
+                Files.createDirectories(storyDir);
+                Path target = storyDir.resolve(storedName).normalize();
+                contentFile.transferTo(target.toFile());
+
+                // Return a URL that works from the frontend (goes through API Gateway)
+                story.setContentUrl(apiGatewayUrl + "/api/stories/uploads/" + storedName);
+            }
+            
             Story createdStory = storyService.createStory(story);
             return ResponseEntity.ok(createdStory);
         } catch (Exception e) {

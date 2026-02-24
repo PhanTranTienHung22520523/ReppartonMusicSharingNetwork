@@ -1,5 +1,11 @@
 C:\Users\phant\Downloads\DA2\ReppartonMicroservices\playlist-service\src\main\java\com\DA2\playlistservice\repository\PlaylistRepository.java
+C:\Users\phant\Downloads\DA2\ReppartonMicroservices\playlist-service\src\main\java\com\DA2\playlistservice\dto\PlaylistSearchResponse.java
 C:\Users\phant\Downloads\DA2\ReppartonMicroservices\playlist-service\src\main\java\com\DA2\playlistservice\controller\PlaylistController.java
+C:\Users\phant\Downloads\DA2\ReppartonMicroservices\playlist-service\src\main\java\com\DA2\playlistservice\config\RestTemplateConfig.java
+C:\Users\phant\Downloads\DA2\ReppartonMicroservices\playlist-service\src\main\java\com\DA2\playlistservice\client\UserServiceClient.java
+C:\Users\phant\Downloads\DA2\ReppartonMicroservices\playlist-service\src\main\java\com\DA2\playlistservice\dto\UserProfileResponseDTO.java
+C:\Users\phant\Downloads\DA2\ReppartonMicroservices\playlist-service\src\main\java\com\DA2\playlistservice\config\PlaylistSecurityConfig.java
+C:\Users\phant\Downloads\DA2\ReppartonMicroservices\playlist-service\src\main\java\com\DA2\playlistservice\dto\UserSummary.java
 C:\Users\phant\Downloads\DA2\ReppartonMicroservices\playlist-service\src\main\java\com\DA2\playlistservice\entity\PlaylistFollower.java
 C:\Users\phant\Downloads\DA2\ReppartonMicroservices\playlist-service\src\main\java\com\DA2\playlistservice\PlaylistServiceApplication.java
 C:\Users\phant\Downloads\DA2\ReppartonMicroservices\playlist-service\src\main\java\com\DA2\playlistservice\repository\PlaylistFollowerRepository.java

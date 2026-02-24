@@ -32,15 +32,13 @@ public class NotificationService {
             notificationRequest.put("title", title);
             notificationRequest.put("message", message);
             notificationRequest.put("type", "SECURITY_ALERT");
-            notificationRequest.put("priority", "HIGH");
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(notificationRequest, headers);
 
-            String url = notificationServiceUrl + "/send";
-            restTemplate.postForObject(url, request, String.class);
+            restTemplate.postForObject(notificationServiceUrl, request, String.class);
 
             log.info("Security alert sent to user {}", userId);
         } catch (Exception e) {
@@ -59,15 +57,13 @@ public class NotificationService {
             notificationRequest.put("title", title);
             notificationRequest.put("message", message);
             notificationRequest.put("type", type);
-            notificationRequest.put("priority", "NORMAL");
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(notificationRequest, headers);
 
-            String url = notificationServiceUrl + "/send";
-            restTemplate.postForObject(url, request, String.class);
+            restTemplate.postForObject(notificationServiceUrl, request, String.class);
 
             log.info("Notification sent to user {}: {}", userId, type);
         } catch (Exception e) {

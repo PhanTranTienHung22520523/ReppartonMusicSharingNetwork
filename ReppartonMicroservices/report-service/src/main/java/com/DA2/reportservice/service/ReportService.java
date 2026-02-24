@@ -53,7 +53,7 @@ public class ReportService {
 
     // Get reports by status
     public Page<Report> getReportsByStatus(String status, Pageable pageable) {
-        return reportRepository.findByStatusOrderByCreatedAtDesc(status, pageable);
+        return reportRepository.findByStatusIgnoreCaseOrderByCreatedAtDesc(status, pageable);
     }
 
     // Get reports by reporter
@@ -88,17 +88,17 @@ public class ReportService {
     // Get statistics
     public ReportStatistics getStatistics() {
         long totalReports = reportRepository.count();
-        long pendingReports = reportRepository.countByStatus("pending");
-        long reviewingReports = reportRepository.countByStatus("reviewing");
-        long resolvedReports = reportRepository.countByStatus("resolved");
-        long rejectedReports = reportRepository.countByStatus("rejected");
+        long pendingReports = reportRepository.countByStatusIgnoreCase("PENDING");
+        long reviewingReports = reportRepository.countByStatusIgnoreCase("REVIEWING");
+        long resolvedReports = reportRepository.countByStatusIgnoreCase("RESOLVED");
+        long rejectedReports = reportRepository.countByStatusIgnoreCase("REJECTED");
 
         ReportStatistics stats = new ReportStatistics();
-        stats.setTotal(totalReports);
-        stats.setPending(pendingReports);
-        stats.setReviewing(reviewingReports);
-        stats.setResolved(resolvedReports);
-        stats.setRejected(rejectedReports);
+        stats.setTotalReports(totalReports);
+        stats.setTotalPending(pendingReports);
+        stats.setTotalReviewing(reviewingReports);
+        stats.setTotalResolved(resolvedReports);
+        stats.setTotalRejected(rejectedReports);
 
         return stats;
     }
@@ -119,21 +119,21 @@ public class ReportService {
 
     // Inner class for statistics
     public static class ReportStatistics {
-        private long total;
-        private long pending;
-        private long reviewing;
-        private long resolved;
-        private long rejected;
+        private long totalReports;
+        private long totalPending;
+        private long totalReviewing;
+        private long totalResolved;
+        private long totalRejected;
 
-        public long getTotal() { return total; }
-        public void setTotal(long total) { this.total = total; }
-        public long getPending() { return pending; }
-        public void setPending(long pending) { this.pending = pending; }
-        public long getReviewing() { return reviewing; }
-        public void setReviewing(long reviewing) { this.reviewing = reviewing; }
-        public long getResolved() { return resolved; }
-        public void setResolved(long resolved) { this.resolved = resolved; }
-        public long getRejected() { return rejected; }
-        public void setRejected(long rejected) { this.rejected = rejected; }
+        public long getTotalReports() { return totalReports; }
+        public void setTotalReports(long totalReports) { this.totalReports = totalReports; }
+        public long getTotalPending() { return totalPending; }
+        public void setTotalPending(long totalPending) { this.totalPending = totalPending; }
+        public long getTotalReviewing() { return totalReviewing; }
+        public void setTotalReviewing(long totalReviewing) { this.totalReviewing = totalReviewing; }
+        public long getTotalResolved() { return totalResolved; }
+        public void setTotalResolved(long totalResolved) { this.totalResolved = totalResolved; }
+        public long getTotalRejected() { return totalRejected; }
+        public void setTotalRejected(long totalRejected) { this.totalRejected = totalRejected; }
     }
 }

@@ -1,6 +1,51 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import { getUserSettings, updateUserSettings } from "../api/userService";
 
 const SettingsContext = createContext();
+
+const DEFAULT_SETTINGS = {
+  language: localStorage.getItem("language") || "en",
+  theme: "light",
+  audio: {
+    quality: "high",
+    autoplay: true,
+    crossfade: false,
+    volume: 75,
+    fadeInDuration: 3, // seconds
+  },
+  notifications: {
+    likes: true,
+    comments: true,
+    followers: true,
+    newMusic: true,
+    email: false,
+    push: true,
+  },
+  privacy: {
+    publicProfile: true,
+    showActivity: true,
+    publicPlaylists: true,
+    whoCanMsg: "everyone",
+  },
+  interface: {
+    showWaveform: true,
+    showLyrics: true,
+    compactMode: false,
+    animationsEnabled: true,
+  },
+};
+
+const normalizeSettingsShape = (maybeSettings) => {
+  if (!maybeSettings || typeof maybeSettings !== "object") return { ...DEFAULT_SETTINGS };
+  return {
+    ...DEFAULT_SETTINGS,
+    ...maybeSettings,
+    audio: { ...DEFAULT_SETTINGS.audio, ...(maybeSettings.audio || {}) },
+    notifications: { ...DEFAULT_SETTINGS.notifications, ...(maybeSettings.notifications || {}) },
+    privacy: { ...DEFAULT_SETTINGS.privacy, ...(maybeSettings.privacy || {}) },
+    interface: { ...DEFAULT_SETTINGS.interface, ...(maybeSettings.interface || {}) },
+  };
+};
 
 export function SettingsProvider({ children }) {
   // Load settings from localStorage based on user
@@ -11,46 +56,18 @@ export function SettingsProvider({ children }) {
       const settingsKey = `appSettings_${userId}`;
       const saved = localStorage.getItem(settingsKey);
       if (saved) {
-        return JSON.parse(saved);
+        return normalizeSettingsShape(JSON.parse(saved));
       }
     } catch (error) {
       console.error("Error loading settings:", error);
     }
-    
+
     // Default settings (guest theme is light)
-    return {
-      theme: "light",
-      audio: {
-        quality: "high",
-        autoplay: true,
-        crossfade: false,
-        volume: 75,
-        fadeInDuration: 3, // seconds
-      },
-      notifications: {
-        likes: true,
-        comments: true,
-        followers: true,
-        newMusic: true,
-        email: false,
-        push: true,
-      },
-      privacy: {
-        publicProfile: true,
-        showActivity: true,
-        publicPlaylists: true,
-        whoCanMsg: "everyone",
-      },
-      interface: {
-        showWaveform: true,
-        showLyrics: true,
-        compactMode: false,
-        animationsEnabled: true,
-      }
-    };
+    return { ...DEFAULT_SETTINGS };
   };
 
   const [settings, setSettings] = useState(loadSettings);
+  const [remoteLoaded, setRemoteLoaded] = useState(false);
 
   // Save settings to localStorage whenever they change
   useEffect(() => {
@@ -85,13 +102,72 @@ export function SettingsProvider({ children }) {
     
   }, [settings]);
 
+  // Hydrate from backend when authenticated
+  useEffect(() => {
+    let cancelled = false;
+    const hydrate = async () => {
+      try {
+        const user = JSON.parse(localStorage.getItem("user") || "null");
+        if (!user?.id || !user?.token) {
+          setRemoteLoaded(true);
+          return;
+        }
+
+        const server = await getUserSettings(user.id);
+        // Backend uses interfaceSettings, frontend uses interface
+        const hydrated = normalizeSettingsShape({
+          ...server,
+          interface: server.interface || server.interfaceSettings,
+        });
+
+        if (!cancelled) {
+          setSettings(hydrated);
+          setRemoteLoaded(true);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          console.warn("Failed to load settings from server, using local values.", e);
+          setRemoteLoaded(true);
+        }
+      }
+    };
+
+    hydrate();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Debounced save to backend
+  useEffect(() => {
+    if (!remoteLoaded) return;
+
+    const user = JSON.parse(localStorage.getItem("user") || "null");
+    if (!user?.id || !user?.token) return;
+
+    const timer = setTimeout(() => {
+      updateUserSettings(user.id, {
+        language: settings.language,
+        theme: settings.theme,
+        notifications: settings.notifications,
+        privacy: settings.privacy,
+        audio: settings.audio,
+        interfaceSettings: settings.interface,
+      }).catch((e) => {
+        console.warn("Failed to save settings to server:", e);
+      });
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [settings, remoteLoaded]);
+
   // Update specific setting
   const updateSetting = (category, key, value) => {
-    if (category === 'theme' || key === null) {
-      // Handle theme setting (not in a category)
+    if (key === null) {
+      // Handle root-level settings
       setSettings(prev => ({
         ...prev,
-        theme: value
+        [category]: value
       }));
     } else {
       setSettings(prev => ({
@@ -117,36 +193,7 @@ export function SettingsProvider({ children }) {
 
   // Reset settings to default (for guest)
   const resetSettings = () => {
-    const guestSettings = {
-      theme: "light",
-      audio: {
-        quality: "high",
-        autoplay: true,
-        crossfade: false,
-        volume: 75,
-        fadeInDuration: 3,
-      },
-      notifications: {
-        likes: true,
-        comments: true,
-        followers: true,
-        newMusic: true,
-        email: false,
-        push: true,
-      },
-      privacy: {
-        publicProfile: true,
-        showActivity: true,
-        publicPlaylists: true,
-        whoCanMsg: "everyone",
-      },
-      interface: {
-        showWaveform: true,
-        showLyrics: true,
-        compactMode: false,
-        animationsEnabled: true,
-      }
-    };
+    const guestSettings = { ...DEFAULT_SETTINGS, theme: "light" };
     setSettings(guestSettings);
     localStorage.setItem("appSettings_guest", JSON.stringify(guestSettings));
   };

@@ -8,7 +8,10 @@ const FollowButton = ({
   initialFollowing = false, 
   onFollowChange = () => {},
   size = 'normal',
-  variant = 'primary'
+  variant = 'primary',
+  className = '',
+  minWidth,
+  style
 }) => {
   const { user } = useAuth();
   const [isFollowingUser, setIsFollowingUser] = useState(initialFollowing);
@@ -59,15 +62,18 @@ const FollowButton = ({
 
   const buttonSize = size === 'small' ? 'btn-sm' : size === 'large' ? 'btn-lg' : '';
   const buttonVariant = variant === 'outline' ? 'btn-outline-primary' : 'btn-primary';
+  const defaultMinWidth = size === 'small' ? '80px' : '100px';
+  const resolvedMinWidth = typeof minWidth === 'undefined' ? defaultMinWidth : minWidth;
 
   return (
     <button
-      className={`btn ${buttonVariant} ${buttonSize} d-flex align-items-center gap-2`}
+      className={`btn ${buttonVariant} ${buttonSize} d-flex align-items-center gap-2 ${className}`}
       onClick={handleFollow}
       disabled={loading}
       style={{
-        minWidth: size === 'small' ? '80px' : '100px',
-        transition: 'all 0.2s ease'
+        minWidth: resolvedMinWidth,
+        transition: 'all 0.2s ease',
+        ...(style || {})
       }}
     >
       {loading ? (
@@ -83,8 +89,8 @@ const FollowButton = ({
         </>
       ) : isFollowingUser ? (
         <>
-          <FaCheck size={12} />
-          <span>Following</span>
+          <FaUserMinus size={12} />
+          <span>Unfollow</span>
         </>
       ) : (
         <>

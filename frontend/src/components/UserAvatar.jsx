@@ -40,9 +40,7 @@ const UserAvatar = ({
 }) => {
   // Determine what name to use for initials
   const displayName = user?.fullName || user?.username || user?.email || 'User';
-  const avatarUrl = user?.avatarUrl;
-  
-  console.log("UserAvatar - user:", user, "displayName:", displayName, "avatarUrl:", avatarUrl); // Debug log
+  const avatarUrl = user?.avatarUrl || user?.avatar;
   
   if (avatarUrl && avatarUrl.trim() !== '' && avatarUrl !== '/default-avatar.png') {
     return (

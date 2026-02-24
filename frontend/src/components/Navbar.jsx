@@ -4,6 +4,16 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import UserAvatar from "./UserAvatar";
 import { useState, useEffect } from "react";
 import { FaHeart, FaComment, FaUserPlus, FaMusic, FaShare } from "react-icons/fa";
+import { getUnreadCount, getUserNotifications, markAsRead } from "../api/notificationService";
+import { useStompWebSocket } from "../hooks/useStompWebSocket";
+import {
+  extractActorIdFromNotification,
+  getUserAvatarUrl,
+  getUserByIdCached,
+  getUserDisplayName,
+  stripActorPrefix,
+} from "../utils/notificationEnrichment";
+import { getNotificationDestination } from "../utils/notificationNavigation";
 
 const menuItems = [
   { label: "Home", path: "/", icon: "bi bi-house-door-fill", auth: false },
@@ -11,6 +21,7 @@ const menuItems = [
   { label: "Search", path: "/search", icon: "bi bi-search", auth: false },
   { label: "Genres", path: "/genres", icon: "bi bi-grid-3x3-gap-fill", auth: false },
   { label: "Playlist", path: "/playlist", icon: "bi bi-music-note-list", auth: true },
+  { label: "Groups", path: "/groups", icon: "bi bi-people-fill", auth: true },
 ];
 
 export default function Navbar() {
@@ -18,46 +29,103 @@ export default function Navbar() {
   const { language, toggleLanguage, t } = useLanguage();
   const location = useLocation();
   const navigate = useNavigate();
-  const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const formatCreatedAt = (createdAt) => {
+    try {
+      if (!createdAt) return "Just now";
+      if (typeof createdAt === "string") {
+        const d = new Date(createdAt);
+        return Number.isNaN(d.getTime()) ? "Just now" : d.toLocaleString();
+      }
+      if (Array.isArray(createdAt)) {
+        const [y, m, day, h = 0, min = 0, s = 0] = createdAt;
+        const d = new Date(y, (m || 1) - 1, day || 1, h, min, s);
+        return Number.isNaN(d.getTime()) ? "Just now" : d.toLocaleString();
+      }
+      return "Just now";
+    } catch {
+      return "Just now";
+    }
+  };
+
+  const mapBackendNotification = async (n) => {
+    const fallbackTitle = n?.title || "System";
+    const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackTitle)}&background=666&color=fff`;
+
+    const actorId = extractActorIdFromNotification(n);
+    const actorUser = actorId ? await getUserByIdCached(actorId) : null;
+    const actorName = getUserDisplayName(actorUser) || fallbackTitle;
+    const actorAvatar = getUserAvatarUrl(actorUser) || fallbackAvatar;
+
+    return {
+      id: n?.id || Date.now(),
+      type: n?.type || "general",
+      actorId,
+      user: { name: actorName, avatar: actorAvatar },
+      content: stripActorPrefix(n?.message || "", actorId),
+      target: n?.referenceId,
+      time: formatCreatedAt(n?.createdAt),
+      read: Boolean(n?.read ?? n?.isRead),
+    };
+  };
+
+  // Realtime updates for the bell badge + dropdown list
+  useStompWebSocket('/ws/notifications', {
+    onMessage: async (notification) => {
+      const mapped = await mapBackendNotification(notification);
+      setNotifications((prev) => [mapped, ...prev].slice(0, 10));
+      // New notifications are typically unread
+      setUnreadCount((c) => c + 1);
+    },
+  });
 
   useEffect(() => {
-    // Mock notifications data
-    const mockNotifications = [
-      {
-        id: 1,
-        type: "like",
-        user: { name: "Alice Johnson", avatar: "https://ui-avatars.com/api/?name=Alice+Johnson&background=a259ff&color=fff" },
-        content: "liked your song",
-        target: "Summer Vibes",
-        time: "5 min ago",
-        read: false
-      },
-      {
-        id: 2,
-        type: "comment",
-        user: { name: "Bob Smith", avatar: "https://ui-avatars.com/api/?name=Bob+Smith&background=4da6ff&color=fff" },
-        content: "commented on your post",
-        target: "Amazing track!",
-        time: "1h ago",
-        read: false
-      },
-      {
-        id: 3,
-        type: "follow",
-        user: { name: "Sarah Wilson", avatar: "https://ui-avatars.com/api/?name=Sarah+Wilson&background=66bb6a&color=fff" },
-        content: "started following you",
-        time: "2h ago",
-        read: true
+    let cancelled = false;
+
+    const authed = Boolean(user) && isAuthenticated();
+    if (!authed) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+
+    const load = async () => {
+      try {
+        const page = await getUserNotifications(0, 10);
+        const content = Array.isArray(page?.content) ? page.content : [];
+        const mapped = await Promise.all(content.map(mapBackendNotification));
+
+        if (!cancelled) {
+          setNotifications(mapped);
+
+          // Prefer backend unread count when available; fall back to local computation.
+          const count = await getUnreadCount();
+          const computed = mapped.filter((n) => !n.read).length;
+          setUnreadCount(count > 0 ? count : computed);
+        }
+      } catch (e) {
+        console.error('[Navbar] Failed to load notifications:', e);
+        if (!cancelled) {
+          setNotifications([]);
+          setUnreadCount(0);
+        }
       }
-    ];
-    setNotifications(mockNotifications);
-  }, []);
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, isAuthenticated]);
 
   const getIcon = (type) => {
-    switch(type) {
+    switch (type) {
       case "like": return <FaHeart className="text-danger" size={14} />;
+      case "comment_like": return <FaHeart className="text-danger" size={14} />;
       case "comment": return <FaComment className="text-primary" size={14} />;
+      case "comment_reply": return <FaComment className="text-primary" size={14} />;
       case "follow": return <FaUserPlus className="text-success" size={14} />;
       case "share": return <FaShare className="text-info" size={14} />;
       case "new_music": return <FaMusic className="text-warning" size={14} />;
@@ -65,20 +133,70 @@ export default function Navbar() {
     }
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const handleNotificationClick = async (notif) => {
+    if (!notif) return;
+
+    if (!notif.read) {
+      // Optimistic UI update
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n))
+      );
+      setUnreadCount((c) => Math.max(0, c - 1));
+      try {
+        await markAsRead(notif.id);
+      } catch (e) {
+        console.error('Failed to mark as read:', e);
+      }
+    }
+
+    const dest = getNotificationDestination(notif);
+    if (dest?.to) {
+      navigate(dest.to, dest.state ? { state: dest.state } : undefined);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    if (unreadCount === 0) return;
+
+    // Optimistic UI update
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    setUnreadCount(0);
+
+    try {
+      await markAllAsRead();
+    } catch (e) {
+      console.error('Failed to mark all as read:', e);
+    }
+  };
+
+  const markSingleAsRead = async (e, notifId) => {
+    e.stopPropagation();
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === notifId ? { ...n, read: true } : n))
+    );
+    setUnreadCount((c) => Math.max(0, c - 1));
+    try {
+      await markAsRead(notifId);
+    } catch (e) {
+      console.error('Failed to mark single as read:', e);
+    }
+  };
 
   return (
     <nav
-      className="navbar-horizontal"
+      className="navbar-horizontal glass-nav"
       style={{
         position: "fixed",
         top: 0,
         left: 0,
         right: 0,
         height: 60,
-        background: "var(--surface-color)",
-        borderBottom: "1px solid var(--border-color)",
-        zIndex: 1000,
+        background: "var(--glass-bg)",
+        backdropFilter: "blur(20px) saturate(180%)",
+        WebkitBackdropFilter: "blur(20px) saturate(180%)",
+        borderBottom: "1px solid var(--glass-border)",
+        boxShadow: "var(--depth-sm)",
+        zIndex: 5000,
         display: "flex",
         alignItems: "center",
         padding: "0 16px",
@@ -183,7 +301,7 @@ export default function Navbar() {
             >
               {language === "en" ? "VI" : "EN"}
             </button>
-            
+
             <Link to="/login" className="btn btn-outline-primary rounded-pill px-4">
               {t("auth.signIn")}
             </Link>
@@ -257,29 +375,39 @@ export default function Navbar() {
                   </span>
                 )}
               </button>
-              <div 
-                className="dropdown-menu dropdown-menu-end p-0" 
-                style={{ 
-                  minWidth: 380,
-                  maxHeight: 500,
+              <div
+                className="dropdown-menu dropdown-menu-end p-0 shadow-lg"
+                style={{
+                  minWidth: 400,
+                  maxHeight: 600,
                   overflowY: "auto",
-                  borderRadius: 12,
-                  boxShadow: "var(--shadow-lg)",
-                  border: "1px solid var(--border-color)"
+                  borderRadius: 16,
+                  border: "1px solid var(--border-color)",
+                  zIndex: 2000,
+                  transform: "translateY(10px)"
                 }}
               >
                 {/* Header */}
-                <div className="px-3 py-3 border-bottom" style={{ background: "var(--surface-color)" }}>
-                  <div className="d-flex justify-content-between align-items-center">
+                <div className="px-3 py-3 border-bottom d-flex justify-content-between align-items-center" style={{ background: "var(--surface-color)" }}>
+                  <div className="d-flex align-items-center gap-2">
                     <h6 className="mb-0 fw-bold" style={{ color: "var(--text-color)" }}>
                       {t("nav.notifications")}
                     </h6>
                     {unreadCount > 0 && (
-                      <span className="badge bg-danger rounded-pill">{unreadCount} new</span>
+                      <span className="badge bg-danger rounded-pill" style={{ fontSize: '10px' }}>{unreadCount} new</span>
                     )}
                   </div>
+                  {unreadCount > 0 && (
+                    <button
+                      className="btn btn-link btn-sm p-0 text-decoration-none"
+                      onClick={handleMarkAllAsRead}
+                      style={{ fontSize: '12px', fontWeight: 500, color: 'var(--primary-color)' }}
+                    >
+                      {language === 'vi' ? 'Đánh dấu tất cả đã đọc' : 'Mark all as read'}
+                    </button>
+                  )}
                 </div>
-                
+
                 {/* Notifications List */}
                 <div>
                   {notifications.length === 0 ? (
@@ -291,57 +419,63 @@ export default function Navbar() {
                     notifications.map((notif) => (
                       <div
                         key={notif.id}
-                        className="dropdown-item"
+                        className="dropdown-item position-relative"
                         style={{
-                          padding: "12px 16px",
+                          padding: "16px",
                           cursor: "pointer",
                           background: !notif.read ? "var(--primary-light)" : "transparent",
-                          borderLeft: !notif.read ? "3px solid var(--primary-color)" : "3px solid transparent",
-                          transition: "all 0.2s ease"
+                          borderLeft: !notif.read ? "4px solid var(--primary-color)" : "4px solid transparent",
+                          transition: "all 0.2s ease",
+                          borderBottom: "1px solid var(--border-color-faint)"
                         }}
+                        onClick={() => handleNotificationClick(notif)}
                       >
-                        <div className="d-flex gap-2 align-items-start">
-                          {/* Icon */}
-                          <div 
-                            style={{
-                              width: 32,
-                              height: 32,
-                              borderRadius: "50%",
-                              background: "var(--bg-secondary)",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              flexShrink: 0
-                            }}
-                          >
-                            {getIcon(notif.type)}
+                        <div className="d-flex gap-3 align-items-start">
+                          {/* Left: Icon or Avatar stack */}
+                          <div className="position-relative">
+                            <img
+                              src={notif.user.avatar}
+                              alt={notif.user.name}
+                              style={{
+                                width: 44,
+                                height: 44,
+                                borderRadius: "50%",
+                                objectFit: "cover",
+                                border: '2px solid var(--card-color)'
+                              }}
+                            />
+                            <div
+                              style={{
+                                position: 'absolute',
+                                bottom: -2,
+                                right: -2,
+                                width: 20,
+                                height: 20,
+                                borderRadius: "50%",
+                                background: "var(--card-color)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                              }}
+                            >
+                              {getIcon(notif.type)}
+                            </div>
                           </div>
 
-                          {/* Avatar */}
-                          <img 
-                            src={notif.user.avatar} 
-                            alt={notif.user.name}
-                            style={{
-                              width: 36,
-                              height: 36,
-                              borderRadius: "50%",
-                              objectFit: "cover",
-                              flexShrink: 0
-                            }}
-                          />
-
-                          {/* Content */}
+                          {/* Middle: Content */}
                           <div className="flex-grow-1" style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: 14 }}>
-                              <strong style={{ color: "var(--text-color)" }}>
+                            <div style={{ fontSize: '14px', lineHeight: '1.4' }}>
+                              <span className="fw-bold" style={{ color: "var(--text-color)" }}>
                                 {notif.user.name}
-                              </strong>
+                              </span>
                               <span className="text-muted ms-1">{notif.content}</span>
                               {notif.target && (
-                                <div className="mt-1" style={{ 
-                                  fontSize: 13, 
+                                <div className="mt-1" style={{
+                                  fontSize: '13px',
                                   color: "var(--primary-color)",
-                                  fontStyle: "italic",
+                                  fontWeight: 500,
+                                  opacity: 0.8,
                                   whiteSpace: "nowrap",
                                   overflow: "hidden",
                                   textOverflow: "ellipsis"
@@ -350,21 +484,29 @@ export default function Navbar() {
                                 </div>
                               )}
                             </div>
-                            <small className="text-muted" style={{ fontSize: 12 }}>{notif.time}</small>
+                            <div className="mt-1 d-flex align-items-center gap-2">
+                              <small className="text-muted" style={{ fontSize: '12px' }}>{notif.time}</small>
+                              {!notif.read && <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--primary-color)' }}></div>}
+                            </div>
                           </div>
 
-                          {/* Unread dot */}
+                          {/* Right: Mark as read button (visible on hover or if unread) */}
                           {!notif.read && (
-                            <div 
+                            <button
+                              className="btn btn-sm btn-icon rounded-circle ms-2"
+                              title="Mark as read"
+                              onClick={(e) => markSingleAsRead(e, notif.id)}
                               style={{
-                                width: 8,
-                                height: 8,
-                                borderRadius: "50%",
-                                background: "var(--primary-color)",
-                                flexShrink: 0,
-                                marginTop: 4
+                                width: 28,
+                                height: 28,
+                                opacity: 0.6,
+                                transition: 'opacity 0.2s'
                               }}
-                            />
+                              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                              onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
+                            >
+                              <i className="bi bi-check2-circle text-primary" style={{ fontSize: '18px' }}></i>
+                            </button>
                           )}
                         </div>
                       </div>
@@ -375,7 +517,7 @@ export default function Navbar() {
                 {/* Footer */}
                 {notifications.length > 0 && (
                   <div className="border-top px-3 py-2 text-center" style={{ background: "var(--surface-color)" }}>
-                    <button 
+                    <button
                       className="btn btn-link btn-sm text-decoration-none"
                       style={{ color: "var(--primary-color)", fontWeight: 600 }}
                       onClick={() => navigate("/notifications")}
@@ -456,6 +598,30 @@ export default function Navbar() {
                     {t("nav.profile")}
                   </Link>
                 </li>
+                {user?.roles?.includes("ADMIN") && (
+                  <>
+                    <li><hr className="dropdown-divider" /></li>
+                    <li>
+                      <Link className="dropdown-item" to="/admin">
+                        <i className="bi bi-shield-check me-2"></i>
+                        Admin Dashboard
+                      </Link>
+                    </li>
+                    <li>
+                      <Link className="dropdown-item" to="/admin/users">
+                        <i className="bi bi-people me-2"></i>
+                        Quản lý Users
+                      </Link>
+                    </li>
+                    <li>
+                      <Link className="dropdown-item" to="/admin/artists">
+                        <i className="bi bi-star me-2"></i>
+                        Duyệt Nghệ sĩ
+                      </Link>
+                    </li>
+                    <li><hr className="dropdown-divider" /></li>
+                  </>
+                )}
                 <li>
                   <Link className="dropdown-item" to="/analytics">
                     <i className="bi bi-graph-up me-2"></i>
@@ -474,11 +640,29 @@ export default function Navbar() {
                     {t("nav.messages")}
                   </Link>
                 </li>
+                <li>
+                  <Link className="dropdown-item" to="/stories">
+                    <i className="bi bi-camera me-2"></i>
+                    Stories
+                  </Link>
+                </li>
+                <li>
+                  <Link className="dropdown-item" to="/devices">
+                    <i className="bi bi-shield-lock me-2"></i>
+                    Devices
+                  </Link>
+                </li>
                 <li><hr className="dropdown-divider" /></li>
                 <li>
                   <Link className="dropdown-item" to="/settings">
                     <i className="bi bi-gear me-2"></i>
                     {t("nav.settings")}
+                  </Link>
+                </li>
+                <li>
+                  <Link className="dropdown-item" to="/change-password">
+                    <i className="bi bi-shield-lock me-2"></i>
+                    {language === "vi" ? "Đổi mật khẩu" : "Change Password"}
                   </Link>
                 </li>
                 <li>

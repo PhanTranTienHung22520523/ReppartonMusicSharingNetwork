@@ -10,6 +10,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @EnableDiscoveryClient
 @EnableFeignClients
 @EnableAsync
+@org.springframework.context.annotation.ComponentScan(basePackages = {"com.DA2"})
 public class RecommendationServiceApplication {
     public static void main(String[] args) {
         SpringApplication.run(RecommendationServiceApplication.class, args);

@@ -1,0 +1,42 @@
+.admin-users {
+  background: radial-gradient(1200px 600px at 20% -10%, rgba(99, 102, 241, 0.18), transparent 60%),
+              radial-gradient(900px 500px at 100% 0%, rgba(16, 185, 129, 0.14), transparent 55%),
+              radial-gradient(800px 450px at 0% 90%, rgba(59, 130, 246, 0.12), transparent 55%),
+              #f8fafc;
+}
+
+.admin-users__header {
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(16, 185, 129, 0.10));
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.admin-users__header h2 {
+  letter-spacing: -0.02em;
+}
+
+.admin-users__card {
+  border-radius: 16px;
+}
+
+.admin-users__card .card-body {
+  padding: 18px;
+}
+
+.admin-users__table thead th {
+  color: #334155;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.admin-users__table tbody td {
+  border-top-color: rgba(148, 163, 184, 0.2);
+}
+
+.admin-users .btn {
+  border-radius: 12px;
+}
+
+.admin-muted {
+  color: #64748b;
+}

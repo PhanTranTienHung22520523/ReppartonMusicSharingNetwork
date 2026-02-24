@@ -1,19 +1,47 @@
-import { API_ENDPOINTS, getAuthToken, createHeaders } from '../config/api.config';
+import { API_ENDPOINTS, createHeaders } from '../config/api.config';
 
 const API_URL = API_ENDPOINTS.playlists;
 
-// Get user playlists
-export async function getUserPlaylists() {
+function getCurrentUserId() {
   try {
-    const res = await fetch(API_URL, {
+    const raw = localStorage.getItem('user');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.id ?? parsed?.userId ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function unwrapResponse(json) {
+  if (!json) return json;
+  // Some services return ApiResponse { success, message, data }
+  if (Object.prototype.hasOwnProperty.call(json, 'data')) return json.data;
+  return json;
+}
+
+// Get user playlists
+export async function getUserPlaylists(userId) {
+  try {
+    const resolvedUserId = userId ?? getCurrentUserId();
+    if (!resolvedUserId) throw new Error('User not authenticated');
+
+    // Backend exposes /api/playlists/user/{userId} (returns Page<Playlist>)
+    const res = await fetch(`${API_URL}/user/${encodeURIComponent(resolvedUserId)}?page=0&size=50`, {
       headers: createHeaders(true),
     });
     
     if (!res.ok) {
       throw new Error("Failed to fetch playlists");
     }
-    
-    return await res.json();
+
+    const json = await res.json();
+    const payload = unwrapResponse(json);
+
+    // Page format: { content: [...] }
+    if (payload && Array.isArray(payload.content)) return payload.content;
+    if (Array.isArray(payload)) return payload;
+    return [];
   } catch (error) {
     throw new Error(error.message || "Failed to load playlists");
   }
@@ -22,10 +50,21 @@ export async function getUserPlaylists() {
 // Create playlist
 export async function createPlaylist(playlistData) {
   try {
+    const userId = getCurrentUserId();
+    if (!userId) throw new Error('User not authenticated');
+
+    // Backend uses isPrivate; UI uses isPublic
+    const payload = { ...playlistData };
+    if (payload.isPublic !== undefined && payload.isPrivate === undefined) {
+      payload.isPrivate = !payload.isPublic;
+      delete payload.isPublic;
+    }
+    if (!payload.userId) payload.userId = userId;
+
     const res = await fetch(API_URL, {
       method: "POST",
       headers: createHeaders(true),
-      body: JSON.stringify(playlistData),
+      body: JSON.stringify(payload),
     });
     
     const data = await res.json();
@@ -33,8 +72,8 @@ export async function createPlaylist(playlistData) {
     if (!res.ok) {
       throw new Error(data.message || "Failed to create playlist");
     }
-    
-    return data;
+
+    return data.playlist ?? unwrapResponse(data);
   } catch (error) {
     throw new Error(error.message || "Failed to create playlist");
   }
@@ -51,7 +90,7 @@ export async function getPlaylistById(playlistId) {
       throw new Error("Playlist not found");
     }
     
-    return await res.json();
+    return unwrapResponse(await res.json());
   } catch (error) {
     throw new Error(error.message || "Failed to load playlist");
   }
@@ -60,10 +99,19 @@ export async function getPlaylistById(playlistId) {
 // Update playlist
 export async function updatePlaylist(playlistId, playlistData) {
   try {
-    const res = await fetch(`${API_URL}/${playlistId}`, {
+    const userId = getCurrentUserId();
+    if (!userId) throw new Error('User not authenticated');
+
+    const payload = { ...playlistData };
+    if (payload.isPublic !== undefined && payload.isPrivate === undefined) {
+      payload.isPrivate = !payload.isPublic;
+      delete payload.isPublic;
+    }
+
+    const res = await fetch(`${API_URL}/${playlistId}?userId=${encodeURIComponent(userId)}`, {
       method: "PUT",
       headers: createHeaders(true),
-      body: JSON.stringify(playlistData),
+      body: JSON.stringify(payload),
     });
     
     const data = await res.json();
@@ -71,8 +119,8 @@ export async function updatePlaylist(playlistId, playlistData) {
     if (!res.ok) {
       throw new Error(data.message || "Failed to update playlist");
     }
-    
-    return data;
+
+    return data.playlist ?? unwrapResponse(data);
   } catch (error) {
     throw new Error(error.message || "Failed to update playlist");
   }
@@ -81,7 +129,10 @@ export async function updatePlaylist(playlistId, playlistData) {
 // Delete playlist
 export async function deletePlaylist(playlistId) {
   try {
-    const res = await fetch(`${API_URL}/${playlistId}`, {
+    const userId = getCurrentUserId();
+    if (!userId) throw new Error('User not authenticated');
+
+    const res = await fetch(`${API_URL}/${playlistId}?userId=${encodeURIComponent(userId)}`, {
       method: "DELETE",
       headers: createHeaders(true),
     });
@@ -100,10 +151,13 @@ export async function deletePlaylist(playlistId) {
 // Add song to playlist
 export async function addSongToPlaylist(playlistId, songId) {
   try {
-    const res = await fetch(`${API_URL}/${playlistId}/songs`, {
+    const userId = getCurrentUserId();
+    if (!userId) throw new Error('User not authenticated');
+
+    // Backend: POST /api/playlists/{playlistId}/songs/{songId}?userId=...
+    const res = await fetch(`${API_URL}/${playlistId}/songs/${songId}?userId=${encodeURIComponent(userId)}`, {
       method: "POST",
       headers: createHeaders(true),
-      body: JSON.stringify({ songId }),
     });
     
     const data = await res.json();
@@ -111,8 +165,8 @@ export async function addSongToPlaylist(playlistId, songId) {
     if (!res.ok) {
       throw new Error(data.message || "Failed to add song to playlist");
     }
-    
-    return data;
+
+    return data.playlist ?? unwrapResponse(data);
   } catch (error) {
     throw new Error(error.message || "Failed to add song");
   }
@@ -121,7 +175,10 @@ export async function addSongToPlaylist(playlistId, songId) {
 // Remove song from playlist
 export async function removeSongFromPlaylist(playlistId, songId) {
   try {
-    const res = await fetch(`${API_URL}/${playlistId}/songs/${songId}`, {
+    const userId = getCurrentUserId();
+    if (!userId) throw new Error('User not authenticated');
+
+    const res = await fetch(`${API_URL}/${playlistId}/songs/${songId}?userId=${encodeURIComponent(userId)}`, {
       method: "DELETE",
       headers: createHeaders(true),
     });

@@ -20,7 +20,8 @@ class SongRecommender:
     Hybrid recommendation system combining:
     1. Content-based filtering (audio features)
     2. Collaborative filtering (user behavior)
-    3. Popularity-based ranking
+    3. Search-based interest (search history)
+    4. Popularity-based ranking
     """
     
     def __init__(self):
@@ -85,14 +86,16 @@ class SongRecommender:
     
     def recommend_by_user(self, user_id: str, 
                          listening_history: List[Dict[str, Any]],
+                         search_history: List[Dict[str, Any]] = None,
+                         preferred_genres: List[str] = None,
                          limit: int = 20) -> List[Dict[str, Any]]:
         """
-        Recommend songs based on user's listening history
-        Uses collaborative filtering and user preferences
+        Recommend songs based on user's listening and search history
         
         Args:
             user_id: User identifier
             listening_history: List of {song_id, play_count, liked}
+            search_history: List of {query, timestamp}
             limit: Number of recommendations
             
         Returns:
@@ -116,12 +119,20 @@ class SongRecommender:
             # Get user's favorite songs
             user_songs = self.user_interactions[user_id]
             
-            if not user_songs:
-                # New user - return popular songs
+            if not user_songs and not search_history:
+                # Cold start check: Do we have preferred genres?
+                if preferred_genres and len(preferred_genres) > 0:
+                     return self._recommend_by_genres(preferred_genres, limit)
+                
+                # New user without any history - return popular songs
                 return self._recommend_popular(limit)
             
             # Calculate weighted average of user's favorite song features
-            user_profile = self._build_user_profile(user_songs)
+            if user_songs:
+                user_profile = self._build_user_profile(user_songs)
+            else:
+                # If no listening history, use neutral profile but let search score drive recommendations
+                user_profile = np.zeros(self._extract_feature_vector({}).shape)
             
             # Find similar songs
             recommendations = []
@@ -137,15 +148,24 @@ class SongRecommender:
                 # Apply collaborative filtering boost
                 cf_score = self._collaborative_filtering_score(user_id, song_id)
                 
-                # Combine content and collaborative scores
-                final_score = similarity * 0.7 + cf_score * 0.3
+                # Apply search relevance boost
+                search_score = self._search_relevance_score(song_data, search_history) if search_history else 0.0
                 
+                # Combine scores (Hybrid weights: Content=50%, CF=30%, Search=20%)
+                # Adjust weights as needed
+                final_score = similarity * 0.5 + cf_score * 0.3 + search_score * 0.2
+                
+                # Dynamic weight adjustment if search score is high
+                if search_score > 0.5:
+                     final_score = similarity * 0.4 + cf_score * 0.2 + search_score * 0.4
+
                 recommendations.append({
                     'song_id': song_id,
                     'score': float(final_score),
                     'content_score': float(similarity),
                     'collaborative_score': float(cf_score),
-                    'reason': 'Based on your listening history'
+                    'search_score': float(search_score),
+                    'reason': self._generate_hybrid_reason(similarity, cf_score, search_score)
                 })
             
             # Sort by final score
@@ -370,6 +390,60 @@ class SongRecommender:
             logger.warning(f"Error in collaborative filtering: {str(e)}")
             return 0.0
     
+    def _search_relevance_score(self, song_data: Dict[str, Any], search_history: List[Dict[str, Any]]) -> float:
+        """
+        Calculate how relevant a song is based on user's search history
+        """
+        try:
+            if not search_history:
+                return 0.0
+                
+            features = song_data.get('features', {})
+            # Metadata might be needed her, but current song_database structure mainly focuses on features.
+            # Assuming song_data might get enriched with metadata or we infer from what we have.
+            # For this MVP, let's assume 'features' might contain basic metadata keys if they were passed during training,
+            # OR we rely on generic matching if we had access to title/artist.
+            
+            # Since song_database currently stores features and popularity, strictly speaking we lack title/artist strings.
+            # However, usually the AI service would have a metadata store or we rely on 'mood'/'genre' matches which ARE in features.
+            
+            score = 0.0
+            queries = [q.get('query', '').lower() for q in search_history if q.get('query')]
+            
+            # Check for genre matches in queries
+            # 'genre' is sometimes in features or we can infer it
+            # Let's check 'mood' and 'genre' if available
+            
+            genre = str(features.get('genre', '')).lower()
+            mood = str(features.get('mood', '')).lower()
+            key = str(features.get('key', '')).lower()
+            
+            for query in queries:
+                # Direct matches with mood/key
+                if mood and mood in query:
+                    score += 0.3
+                if key and key in query:
+                    score += 0.2
+                if genre and genre in query:
+                    score += 0.4
+                    
+                # If we had title/artist in song_database, we would match here.
+                # For now, this is a "blind" match on features-as-text
+                
+            return min(score, 1.0) # Cap at 1.0
+            
+        except Exception as e:
+            return 0.0
+
+    def _generate_hybrid_reason(self, content_score: float, cf_score: float, search_score: float) -> str:
+        """Generate reason based on highest contributing factor"""
+        if search_score > 0.4 and search_score > content_score and search_score > cf_score:
+            return "Matches your recent searches"
+        elif cf_score > 0.4 and cf_score > content_score:
+            return "Popular among users like you"
+        else:
+            return "Based on your music taste"
+
     def _recommend_popular(self, limit: int) -> List[Dict[str, Any]]:
         """
         Recommend popular songs (for new users)
@@ -387,6 +461,42 @@ class SongRecommender:
         
         return popular_songs[:limit]
     
+    def _recommend_by_genres(self, genres: List[str], limit: int) -> List[Dict[str, Any]]:
+        """
+        Recommend popular songs within specific genres
+        """
+        candidates = []
+        normalized_genres = [g.lower() for g in genres]
+        
+        for song_id, song_data in self.song_database.items():
+            # Check if song genre matches any preferred genre
+            # Assuming 'genre' is in features or metadata. 
+            # In this mock/simplified version, we might check 'mood' or just assume some hidden metadata
+            # For robustness, let's assume 'genre' key exists in features
+            song_genre = str(song_data['features'].get('genre', '')).lower()
+            
+            if any(g in song_genre for g in normalized_genres):
+                 candidates.append((song_id, song_data.get('popularity', 0)))
+        
+        # Sort by popularity
+        candidates.sort(key=lambda x: x[1], reverse=True)
+        
+        # Format results
+        results = []
+        for song_id, _ in candidates[:limit]:
+            results.append({
+                'song_id': song_id,
+                'score': 1.0, # High relevance due to explicit preference
+                'reason': 'Matches your favorite genres'
+            })
+            
+        # If not enough genre matches, fill with popular
+        if len(results) < limit:
+            popular = self._recommend_popular(limit - len(results))
+            results.extend(popular)
+            
+        return results
+
     def _generate_reason(self, features1: Dict, features2: Dict) -> str:
         """
         Generate human-readable reason for recommendation

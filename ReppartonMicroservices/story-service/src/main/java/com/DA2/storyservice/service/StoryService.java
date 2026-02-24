@@ -12,8 +12,13 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.client.RestTemplate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -28,12 +33,28 @@ public class StoryService {
     @Autowired
     private StoryViewRepository storyViewRepository;
 
+    @Autowired
+    private RestTemplate restTemplate;
+
+    @Value("${api.gateway.url:http://localhost:8090}")
+    private String apiGatewayUrl;
+
+    @Value("${notification.service.url:http://localhost:8086/api/notifications}")
+    private String notificationServiceUrl;
+
     // Create story
     @CacheEvict(value = "stories", allEntries = true)
     public Story createStory(Story story) {
         story.setCreatedAt(LocalDateTime.now());
         story.setExpiresAt(LocalDateTime.now().plusHours(24));
-        return storyRepository.save(story);
+        Story created = storyRepository.save(story);
+
+        // Notify followers (best-effort)
+        if (created.getUserId() != null && !created.getUserId().isBlank()) {
+            notifyFollowersOfNewStory(created);
+        }
+
+        return created;
     }
 
     // Get story by ID
@@ -120,11 +141,92 @@ public class StoryService {
                     // Increment like count
                     story.incrementLikes();
                     storyRepository.save(story);
+
+                    // Notify owner (best-effort)
+                    if (story.getUserId() != null && !story.getUserId().isBlank() && userId != null && !userId.equals(story.getUserId())) {
+                        sendNotification(
+                                story.getUserId(),
+                                userId,
+                                "like",
+                                "New like",
+                                "User " + userId + " liked your story",
+                                storyId
+                        );
+                    }
                     return true;
                 }
             }
         }
         return false;
+    }
+
+    private void notifyFollowersOfNewStory(Story created) {
+        try {
+            List<String> followerIds = getFollowerIds(created.getUserId());
+            if (followerIds.isEmpty()) return;
+
+            int limit = Math.min(200, followerIds.size());
+            for (int i = 0; i < limit; i++) {
+                String followerId = followerIds.get(i);
+                if (followerId == null || followerId.isBlank()) continue;
+                if (followerId.equals(created.getUserId())) continue;
+
+                sendNotification(
+                        followerId,
+                        created.getUserId(),
+                        "story",
+                        "New story",
+                        "User " + created.getUserId() + " posted a new story",
+                        created.getId()
+                );
+            }
+        } catch (Exception ignored) {
+            // best-effort
+        }
+    }
+
+    private List<String> getFollowerIds(String userId) {
+        List<String> ids = new ArrayList<>();
+        try {
+            Object res = restTemplate.getForObject(apiGatewayUrl + "/api/social/followers/" + userId, Object.class);
+            if (!(res instanceof List<?> list)) return ids;
+            for (Object item : list) {
+                String id = extractUserId(item);
+                if (id != null && !id.isBlank()) ids.add(id);
+            }
+        } catch (Exception ignored) {
+            // best-effort
+        }
+        return ids;
+    }
+
+    private String extractUserId(Object item) {
+        if (item == null) return null;
+        if (item instanceof String s) return s;
+        if (item instanceof Map<?, ?> map) {
+            Object v = map.get("id");
+            if (v == null) v = map.get("userId");
+            if (v == null) v = map.get("_id");
+            if (v == null) v = map.get("email");
+            return v == null ? null : String.valueOf(v);
+        }
+        return null;
+    }
+
+    private void sendNotification(String recipientId, String actorId, String type, String title, String message, String referenceId) {
+        try {
+            if (recipientId == null || recipientId.isBlank()) return;
+            Map<String, Object> body = new HashMap<>();
+            body.put("userId", recipientId);
+            body.put("actorId", actorId);
+            body.put("type", type);
+            body.put("title", title);
+            body.put("message", message);
+            body.put("referenceId", referenceId);
+            restTemplate.postForObject(notificationServiceUrl, body, Object.class);
+        } catch (Exception ignored) {
+            // best-effort
+        }
     }
 
     // Unlike story

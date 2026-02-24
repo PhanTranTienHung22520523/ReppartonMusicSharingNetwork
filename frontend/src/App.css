@@ -1,9 +1,10 @@
-/* Original Color Scheme */
+/* Enhanced Color Scheme with Gradients & Glass */
 :root {
   --primary-color: #6f42c1;
   --primary-light: #8b5cf6;
   --primary-dark: #5b2c87;
   --secondary-color: #a259ff;
+  --accent-color: #e91e63;
   --background-color: #f5f6fa;
   --surface-color: #ffffff;
   --card-color: #ffffff;
@@ -12,12 +13,36 @@
   --text-muted: #95a5a6;
   --border-color: #e9ecef;
   --hover-color: #f8f9fa;
-  --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.1);
-  --shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.15);
-  --border-radius: 12px;
-  --border-radius-lg: 20px;
-  --transition-fast: 0.2s ease;
-  --transition-medium: 0.3s ease;
+  
+  /* Gradient Definitions */
+  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --gradient-success: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  --gradient-purple: linear-gradient(135deg, #6f42c1 0%, #a259ff 100%);
+  --gradient-sunset: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  --gradient-ocean: linear-gradient(135deg, #667eea 0%, #43e97b 100%);
+  
+  /* Enhanced Shadows with Depth */
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15);
+  --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.18);
+  --shadow-2xl: 0 20px 48px rgba(0, 0, 0, 0.22);
+  --shadow-purple: 0 8px 32px rgba(111, 66, 193, 0.25);
+  --shadow-colored: 0 8px 24px rgba(102, 126, 234, 0.35);
+  
+  /* Glass Morphism */
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.18);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+  
+  --border-radius: 16px;
+  --border-radius-lg: 24px;
+  --border-radius-xl: 32px;
+  --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-medium: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Global Styles */
@@ -34,66 +59,159 @@ body {
   line-height: 1.6;
 }
 
-/* Card Components */
+/* Card Components with Glass Morphism */
 .card {
-  background: var(--card-color) !important;
-  border: 1px solid var(--border-color) !important;
+  background: var(--glass-bg) !important;
+  border: 1px solid var(--glass-border) !important;
   border-radius: var(--border-radius) !important;
-  box-shadow: var(--shadow-light) !important;
-  transition: var(--transition-medium) !important;
+  box-shadow: var(--shadow-md) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  transition: all var(--transition-medium) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--gradient-primary);
+  opacity: 0;
+  transition: opacity var(--transition-medium);
 }
 
 .card:hover {
-  box-shadow: var(--shadow-medium) !important;
+  box-shadow: var(--shadow-xl) !important;
+  transform: translateY(-4px);
+  border-color: rgba(111, 66, 193, 0.3) !important;
 }
 
-/* Button Styles */
-.btn {
-  border-radius: var(--border-radius) !important;
-  font-weight: 600 !important;
-  transition: var(--transition-fast) !important;
+.card:hover::before {
+  opacity: 1;
+}
+
+/* Glass Card Variant */
+.card-glass {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--glass-shadow) !important;
+}
+
+/* Elevated Card */
+.card-elevated {
+  box-shadow: var(--shadow-2xl) !important;
   border: none !important;
 }
 
+/* Button Styles with Gradients & Shadows */
+.btn {
+  border-radius: var(--border-radius) !important;
+  font-weight: 600 !important;
+  transition: all var(--transition-medium) !important;
+  border: none !important;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.btn:hover::before {
+  left: 100%;
+}
+
 .btn-primary {
-  background: var(--primary-color) !important;
+  background: var(--gradient-purple) !important;
   color: white !important;
+  box-shadow: var(--shadow-purple) !important;
 }
 
 .btn-primary:hover {
-  background: var(--primary-dark) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(111, 66, 193, 0.4) !important;
+}
+
+.btn-primary:active {
+  transform: translateY(0);
 }
 
 .btn-secondary {
-  background: var(--surface-color) !important;
+  background: var(--glass-bg) !important;
   color: var(--text-primary) !important;
-  border: 1px solid var(--border-color) !important;
+  border: 1px solid var(--glass-border) !important;
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.btn-secondary:hover {
+  box-shadow: var(--shadow-md) !important;
+  transform: translateY(-2px);
 }
 
 .btn-outline-primary {
   background: transparent !important;
   color: var(--primary-color) !important;
   border: 2px solid var(--primary-color) !important;
+  box-shadow: none !important;
 }
 
 .btn-outline-primary:hover {
-  background: var(--primary-color) !important;
+  background: var(--gradient-purple) !important;
   color: white !important;
+  box-shadow: var(--shadow-purple) !important;
+  transform: translateY(-2px);
 }
 
-/* Form Controls */
+/* Gradient Button Variants */
+.btn-gradient-ocean {
+  background: var(--gradient-ocean) !important;
+  color: white !important;
+  box-shadow: var(--shadow-colored) !important;
+}
+
+.btn-gradient-sunset {
+  background: var(--gradient-sunset) !important;
+  color: white !important;
+  box-shadow: 0 8px 24px rgba(250, 112, 154, 0.35) !important;
+}
+
+/* Form Controls with Glass Effect */
 .form-control {
-  background: var(--surface-color) !important;
-  border: 1px solid var(--border-color) !important;
+  background: var(--glass-bg) !important;
+  border: 1px solid var(--glass-border) !important;
   border-radius: var(--border-radius) !important;
   color: var(--text-primary) !important;
-  transition: var(--transition-fast) !important;
+  transition: all var(--transition-medium) !important;
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-xs);
 }
 
 .form-control:focus {
   border-color: var(--primary-color) !important;
-  box-shadow: 0 0 0 0.2rem rgba(111, 66, 193, 0.25) !important;
+  box-shadow: 0 0 0 3px rgba(111, 66, 193, 0.15), var(--shadow-md) !important;
   color: var(--text-primary) !important;
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.95) !important;
+}
+
+.form-control:hover {
+  border-color: rgba(111, 66, 193, 0.3) !important;
+  box-shadow: var(--shadow-sm);
 }
 
 /* Text Styles */
@@ -165,26 +283,66 @@ body {
   box-shadow: 0 0 0 0.2rem rgba(111, 66, 193, 0.25) !important;
 }
 
-/* Search Suggestions */
+/* Search Suggestions with Glass Morphism */
 .search-suggestions {
-  background: white;
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  box-shadow: var(--shadow-medium);
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-2xl);
   max-height: 300px;
   overflow-y: auto;
   z-index: 1050;
 }
 
+/* Override for search page suggestion dropdown */
+.position-relative > .position-absolute {
+  z-index: 10000 !important;
+}
+
+/* Ensure card containers don't clip dropdowns */
+.card {
+  overflow: visible !important;
+}
+
+.card-body {
+  overflow: visible !important;
+}
+
+/* Ensure suggestions appear on top */
+form.position-relative {
+  overflow: visible !important;
+  z-index: 999;
+}
+
 .search-suggestion-item {
-  padding: 12px 16px;
+  padding: 14px 18px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
-  border-bottom: 1px solid var(--border-color);
+  transition: all var(--transition-medium);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  position: relative;
+}
+
+.search-suggestion-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--gradient-purple);
+  transform: scaleY(0);
+  transition: transform var(--transition-medium);
 }
 
 .search-suggestion-item:hover {
-  background-color: var(--hover-color);
+  background: linear-gradient(90deg, rgba(111, 66, 193, 0.08), transparent);
+  transform: translateX(4px);
+}
+
+.search-suggestion-item:hover::before {
+  transform: scaleY(1);
 }
 
 .search-suggestion-item:last-child {
@@ -227,16 +385,19 @@ body {
   box-shadow: var(--shadow-medium);
 }
 
-/* User Cards in Search */
+/* User Cards with Advanced Glass Morphism */
 .user-search-card {
-  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  padding: 20px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-lg);
+  padding: 24px;
   text-align: center;
-  transition: all 0.3s ease;
+  transition: all var(--transition-medium);
   position: relative;
   overflow: hidden;
+  box-shadow: var(--shadow-md);
 }
 
 .user-search-card::before {
@@ -246,66 +407,128 @@ body {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(111, 66, 193, 0.1), transparent);
-  transition: left 0.5s ease;
+  background: linear-gradient(90deg, transparent, rgba(111, 66, 193, 0.15), transparent);
+  transition: left 0.6s ease;
+}
+
+.user-search-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--gradient-purple);
+  opacity: 0;
+  transition: opacity var(--transition-medium);
+  z-index: -1;
 }
 
 .user-search-card:hover::before {
   left: 100%;
 }
 
+.user-search-card:hover::after {
+  opacity: 0.05;
+}
+
 .user-search-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 12px 30px rgba(111, 66, 193, 0.2);
+  transform: translateY(-12px) scale(1.02);
+  box-shadow: var(--shadow-2xl), 0 0 40px rgba(111, 66, 193, 0.3);
   border-color: var(--primary-color);
 }
 
-/* Song Cards Enhancement */
+/* Song Cards with Advanced Effects */
 .song-card-enhanced {
-  background: white;
-  border-radius: var(--border-radius);
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-lg);
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: all var(--transition-medium);
   position: relative;
-  box-shadow: var(--shadow-light);
+  box-shadow: var(--shadow-md);
+}
+
+.song-card-enhanced::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background: var(--gradient-purple);
+  opacity: 0;
+  transition: opacity var(--transition-medium);
+  z-index: 0;
 }
 
 .song-card-enhanced:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-medium);
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: var(--shadow-2xl), var(--shadow-colored);
+  border-color: rgba(111, 66, 193, 0.4);
+}
+
+.song-card-enhanced:hover::before {
+  opacity: 0.08;
 }
 
 .song-card-enhanced .play-overlay {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(111, 66, 193, 0.9);
+  transform: translate(-50%, -50%) scale(0.8);
+  background: linear-gradient(135deg, rgba(111, 66, 193, 0.95), rgba(162, 89, 255, 0.95));
+  backdrop-filter: blur(10px);
   color: white;
   border-radius: 50%;
-  width: 60px;
-  height: 60px;
+  width: 64px;
+  height: 64px;
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: all var(--transition-medium);
   z-index: 2;
+  box-shadow: 0 8px 32px rgba(111, 66, 193, 0.4);
 }
 
 .song-card-enhanced:hover .play-overlay {
   opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
 }
 
-/* Playlist Cards */
+/* Playlist Cards with Gradient Borders */
 .playlist-card {
-  background: white;
-  border-radius: var(--border-radius);
-  padding: 20px;
-  transition: all 0.3s ease;
-  border: 1px solid var(--border-color);
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: var(--border-radius-lg);
+  padding: 24px;
+  transition: all var(--transition-medium);
+  border: 2px solid transparent;
+  background-clip: padding-box;
   position: relative;
   overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+
+.playlist-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: var(--border-radius-lg);
+  padding: 2px;
+  background: var(--gradient-purple);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity var(--transition-medium);
 }
 
 .playlist-card::after {
@@ -315,9 +538,14 @@ body {
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+  background: var(--gradient-purple);
   transform: scaleX(0);
-  transition: transform 0.3s ease;
+  transition: transform var(--transition-medium);
+  border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+}
+
+.playlist-card:hover::before {
+  opacity: 1;
 }
 
 .playlist-card:hover::after {
@@ -325,8 +553,8 @@ body {
 }
 
 .playlist-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-medium);
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: var(--shadow-2xl), var(--shadow-purple);
 }
 
 /* Playlist Styles */
@@ -349,11 +577,31 @@ body {
   opacity: 1 !important;
 }
 
-/* Playlist Detail Styles */
+/* Playlist Detail with Advanced Gradient */
 .playlist-detail-header {
-  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-  border-radius: var(--border-radius-lg);
+  background: var(--gradient-purple);
+  border-radius: var(--border-radius-xl);
   color: white;
+  box-shadow: var(--shadow-2xl), var(--shadow-purple);
+  position: relative;
+  overflow: hidden;
+  padding: 32px;
+}
+
+.playlist-detail-header::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+  animation: shimmer 8s infinite linear;
+}
+
+@keyframes shimmer {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .song-row {

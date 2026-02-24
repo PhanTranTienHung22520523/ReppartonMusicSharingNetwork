@@ -5,13 +5,19 @@ import com.DA2.postservice.entity.PostLike;
 import com.DA2.postservice.repository.PostRepository;
 import com.DA2.postservice.repository.PostLikeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -25,6 +31,15 @@ public class PostService {
 
     @Autowired
     private LocationService locationService;
+
+    @Autowired
+    private RestTemplate restTemplate;
+
+    @Value("${api.gateway.url:http://localhost:8090}")
+    private String apiGatewayUrl;
+
+    @Value("${notification.service.url:http://localhost:8086/api/notifications}")
+    private String notificationServiceUrl;
 
     // Create post
     @Transactional
@@ -50,7 +65,40 @@ public class PostService {
         }
 
         post.setCreatedAt(LocalDateTime.now());
-        return postRepository.save(post);
+        Post created = postRepository.save(post);
+
+        // Notify followers (best-effort) for public posts only
+        if (!created.isPrivate() && created.getUserId() != null && !created.getUserId().isBlank()) {
+            notifyFollowersOfNewPost(created);
+        }
+
+        // Notify original post author if this is a share
+        if ("SHARE".equals(created.getType()) && created.getSharedPostId() != null) {
+            notifyOriginalAuthorOfShare(created);
+        }
+
+        return created;
+    }
+
+    private void notifyOriginalAuthorOfShare(Post sharePost) {
+        try {
+            Optional<Post> originalOpt = postRepository.findById(sharePost.getSharedPostId());
+            if (originalOpt.isPresent()) {
+                Post original = originalOpt.get();
+                // Don't notify if sharing own post
+                if (original.getUserId() != null && !original.getUserId().equals(sharePost.getUserId())) {
+                    String actorId = sharePost.getUserId();
+                    sendNotification(
+                        original.getUserId(),
+                        actorId,
+                        "share",
+                        "Post shared",
+                        "User " + actorId + " shared your post",
+                        sharePost.getId()
+                    );
+                }
+            }
+        } catch (Exception ignored) {}
     }
 
     // Get post by ID
@@ -74,9 +122,17 @@ public class PostService {
     }
 
     // Get trending posts
-    public List<Post> getTrendingPosts(int days) {
+    public List<Post> getTrendingPosts(int days, int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, 100));
+        Sort sort = Sort.by(Sort.Direction.DESC, "likes").and(Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(0, safeLimit, sort);
+
+        if (days <= 0) {
+            return postRepository.findTrendingPostsAll(pageable);
+        }
+
         LocalDateTime since = LocalDateTime.now().minusDays(days);
-        return postRepository.findTrendingPosts(since);
+        return postRepository.findTrendingPostsSince(since, pageable);
     }
 
     // Update post
@@ -129,6 +185,18 @@ public class PostService {
         // Increment likes count
         post.incrementLikes();
         postRepository.save(post);
+
+        // Notify post owner (best-effort)
+        if (post.getUserId() != null && !post.getUserId().isBlank() && userId != null && !userId.equals(post.getUserId())) {
+            sendNotification(
+                    post.getUserId(),
+                    userId,
+                    "like",
+                    "New like",
+                    "User " + userId + " liked your post",
+                    postId
+            );
+        }
     }
 
     // Unlike post
@@ -165,10 +233,105 @@ public class PostService {
     // Increment share count
     @Transactional
     public void sharePost(String postId) {
+        sharePost(postId, null);
+    }
+
+    @Transactional
+    public void sharePost(String postId, String userId) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
         post.incrementShares();
         postRepository.save(post);
+
+        // Notify post owner (best-effort)
+        if (post.getUserId() != null && !post.getUserId().isBlank() && (userId != null && !userId.equals(post.getUserId()))) {
+            sendNotification(
+                    post.getUserId(),
+                    userId,
+                    "share",
+                    "Post shared",
+                    "User " + userId + " shared your post",
+                    postId
+            );
+        }
+    }
+
+    private void notifyFollowersOfNewPost(Post created) {
+        try {
+            List<String> followerIds = getFollowerIds(created.getUserId());
+            if (followerIds.isEmpty()) return;
+
+            String snippet = created.getContent();
+            if (snippet != null) {
+                snippet = snippet.trim();
+                if (snippet.length() > 60) snippet = snippet.substring(0, 60) + "…";
+            }
+
+            int limit = Math.min(200, followerIds.size());
+            for (int i = 0; i < limit; i++) {
+                String followerId = followerIds.get(i);
+                if (followerId == null || followerId.isBlank()) continue;
+                if (followerId.equals(created.getUserId())) continue;
+
+                sendNotification(
+                        followerId,
+                        created.getUserId(),
+                        "post",
+                        "New post",
+                        "User " + created.getUserId() + " posted" + (snippet == null || snippet.isBlank() ? "" : (": " + snippet)),
+                        created.getId()
+                );
+            }
+        } catch (Exception ignored) {
+            // best-effort
+        }
+    }
+
+    private List<String> getFollowerIds(String userId) {
+        List<String> ids = new ArrayList<>();
+        try {
+            Object res = restTemplate.getForObject(apiGatewayUrl + "/api/social/followers/" + userId, Object.class);
+            if (!(res instanceof List<?> list)) return ids;
+            for (Object item : list) {
+                String id = extractUserId(item);
+                if (id != null && !id.isBlank()) ids.add(id);
+            }
+        } catch (Exception ignored) {
+            // best-effort
+        }
+        return ids;
+    }
+
+    private String extractUserId(Object item) {
+        if (item == null) return null;
+        if (item instanceof String s) return s;
+        if (item instanceof Map<?, ?> map) {
+            Object v = map.get("id");
+            if (v == null) v = map.get("userId");
+            if (v == null) v = map.get("_id");
+            if (v == null) v = map.get("email");
+            return v == null ? null : String.valueOf(v);
+        }
+        return null;
+    }
+
+    private void sendNotification(String recipientId, String actorId, String type, String title, String message, String referenceId) {
+        try {
+            if (recipientId == null || recipientId.isBlank()) return;
+            
+            // Prepare a dynamic map to avoid issues with null values in Map.of
+            java.util.Map<String, Object> body = new java.util.HashMap<>();
+            body.put("userId", recipientId);
+            body.put("actorId", actorId);
+            body.put("type", type);
+            body.put("title", title);
+            body.put("message", message);
+            body.put("referenceId", referenceId);
+            
+            restTemplate.postForObject(notificationServiceUrl, body, Object.class);
+        } catch (Exception ignored) {
+            // best-effort
+        }
     }
 
     // Search posts

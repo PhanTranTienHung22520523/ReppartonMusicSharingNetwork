@@ -1,15 +1,23 @@
 import { useState, useEffect, useCallback } from 'react';
 import { FaComment, FaReply, FaPaperPlane, FaHeart, FaEllipsisV, FaTrash, FaEdit } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { deleteComment, likeComment, addReplyToComment } from '../api/commentService';
 import UserAvatar from './UserAvatar';
 
-export default function EnhancedCommentSection({ 
+function normalizeCommentsResponse(response) {
+  if (Array.isArray(response)) return response;
+  if (response && Array.isArray(response.content)) return response.content;
+  return [];
+}
+
+export default function EnhancedCommentSection({
   type, // 'song', 'post', 'playlist'
-  entityId, 
-  getComments, 
+  entityId,
+  getComments,
   addComment,
-  className = '' 
+  className = '',
+  defaultExpanded = false
 }) {
   const { user } = useAuth();
   const [comments, setComments] = useState([]);
@@ -17,7 +25,7 @@ export default function EnhancedCommentSection({
   const [error, setError] = useState('');
   const [newComment, setNewComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [showComments, setShowComments] = useState(false);
+  const [showComments, setShowComments] = useState(defaultExpanded);
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyText, setReplyText] = useState('');
 
@@ -36,23 +44,51 @@ export default function EnhancedCommentSection({
   };
 
   const handleLikeComment = async (commentId) => {
+    if (!commentId || !user) return;
+
+    // Optimistic toggle (server will reconcile):
+    // - if liked => unlike (likes -1)
+    // - else => like (likes +1)
+    const prevComment = comments.find((c) => c?.id === commentId);
+    const wasLiked = Boolean(prevComment?.liked);
+    setComments((prev) => prev.map((c) => {
+      if (c?.id !== commentId) return c;
+      const nextLikes = Math.max(0, (c.likes || 0) + (wasLiked ? -1 : 1));
+      return { ...c, liked: !wasLiked, likes: nextLikes };
+    }));
+
     try {
-      await likeComment(commentId);
-      await loadComments();
+      const res = await likeComment(commentId);
+      const updated = res?.comment;
+      if (updated?.id) {
+        setComments((prev) => prev.map((c) => (c?.id === updated.id ? { ...c, ...updated } : c)));
+      } else {
+        await loadComments();
+      }
     } catch (err) {
       console.error('Failed to like comment:', err);
       // Don't show alert for like errors as they're less critical
+
+      // Rollback optimistic toggle
+      setComments((prev) => prev.map((c) => {
+        if (c?.id !== commentId) return c;
+        return {
+          ...c,
+          liked: wasLiked,
+          likes: Math.max(0, (c.likes || 0) + (wasLiked ? 1 : -1)),
+        };
+      }));
     }
   };
 
   const loadComments = useCallback(async () => {
     if (!showComments || !entityId) return;
-    
+
     setLoading(true);
     setError('');
     try {
       const response = await getComments(entityId);
-      setComments(response || []);
+      setComments(normalizeCommentsResponse(response));
     } catch (err) {
       setError('Failed to load comments');
       console.error('Failed to load comments:', err);
@@ -112,11 +148,11 @@ export default function EnhancedCommentSection({
     const date = new Date(dateString);
     const now = new Date();
     const diff = now - date;
-    
+
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
-    
+
     if (minutes < 1) return 'just now';
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
@@ -125,6 +161,14 @@ export default function EnhancedCommentSection({
   };
 
   const TypeIcon = getTypeIcon();
+
+  const topLevelComments = comments.filter((c) => !c?.parentId);
+  const repliesByParentId = comments.reduce((acc, c) => {
+    if (c?.parentId) {
+      (acc[c.parentId] ||= []).push(c);
+    }
+    return acc;
+  }, {});
 
   return (
     <div className={`comment-section ${className}`}>
@@ -145,10 +189,10 @@ export default function EnhancedCommentSection({
           {user ? (
             <form onSubmit={handleSubmitComment} className="mb-4">
               <div className="d-flex gap-3 align-items-start">
-                <UserAvatar 
-                  user={user} 
-                  size={40} 
-                  className="flex-shrink-0" 
+                <UserAvatar
+                  user={user}
+                  size={40}
+                  className="flex-shrink-0"
                 />
                 <div className="flex-grow-1">
                   <textarea
@@ -188,7 +232,7 @@ export default function EnhancedCommentSection({
             </div>
           ) : error ? (
             <div className="alert alert-danger">{error}</div>
-          ) : comments.length === 0 ? (
+          ) : topLevelComments.length === 0 ? (
             <div className="text-center text-muted py-4">
               <TypeIcon size={48} className="opacity-25 mb-3" />
               <div>No comments yet.</div>
@@ -196,31 +240,42 @@ export default function EnhancedCommentSection({
             </div>
           ) : (
             <div className="comments-list">
-              {comments.map((comment) => (
+              {topLevelComments.map((comment) => (
                 <div key={comment.id} className="comment-item mb-4">
                   <div className="d-flex gap-3">
-                    <UserAvatar 
-                      user={{ 
-                        avatar: comment.userAvatar, 
-                        username: comment.userName 
-                      }} 
-                      size={40} 
-                      className="flex-shrink-0" 
-                    />
+                    <Link
+                      to={`/profile/${comment.userId || comment.userName}`}
+                      className="text-decoration-none"
+                    >
+                      <UserAvatar
+                        user={{
+                          avatar: comment.userAvatar,
+                          username: comment.userName
+                        }}
+                        size={40}
+                        className="flex-shrink-0"
+                        style={{ cursor: 'pointer' }}
+                      />
+                    </Link>
                     <div className="flex-grow-1">
                       <div className="comment-header d-flex align-items-center gap-2 mb-2">
-                        <strong className="comment-author">
-                          {comment.userName || 'Anonymous'}
-                        </strong>
+                        <Link
+                          to={`/profile/${comment.userId || comment.userName}`}
+                          className="text-decoration-none"
+                        >
+                          <strong className="comment-author" style={{ cursor: 'pointer', color: 'inherit' }}>
+                            {comment.userName || 'Anonymous'}
+                          </strong>
+                        </Link>
                         <span className="text-muted small">
                           {formatTimeAgo(comment.createdAt)}
                         </span>
                       </div>
-                      
+
                       <div className="comment-content mb-3">
                         {comment.content}
                       </div>
-                      
+
                       <div className="comment-actions d-flex align-items-center gap-3">
                         <button
                           className="btn btn-link btn-sm p-0 text-muted d-flex align-items-center gap-1"
@@ -229,13 +284,13 @@ export default function EnhancedCommentSection({
                           <FaReply size={12} />
                           Reply
                         </button>
-                        
-                        <button 
-                          className="btn btn-link btn-sm p-0 text-muted d-flex align-items-center gap-1"
+
+                        <button
+                          className={`btn btn-link btn-sm p-0 d-flex align-items-center gap-1 ${comment?.liked ? 'text-danger' : 'text-muted'}`}
                           onClick={() => handleLikeComment(comment.id)}
                         >
                           <FaHeart size={12} />
-                          Like
+                          Like ({comment.likes || 0})
                         </button>
 
                         {/* Edit and Delete buttons for comment owner */}
@@ -256,10 +311,10 @@ export default function EnhancedCommentSection({
                       {replyingTo === comment.id && user && (
                         <div className="reply-form mt-3 ps-3 border-start">
                           <div className="d-flex gap-2 align-items-start">
-                            <UserAvatar 
-                              user={user} 
-                              size={32} 
-                              className="flex-shrink-0" 
+                            <UserAvatar
+                              user={user}
+                              size={32}
+                              className="flex-shrink-0"
                             />
                             <div className="flex-grow-1">
                               <textarea
@@ -292,6 +347,50 @@ export default function EnhancedCommentSection({
                               </div>
                             </div>
                           </div>
+                        </div>
+                      )}
+
+                      {/* Replies */}
+                      {(repliesByParentId[comment.id] || []).length > 0 && (
+                        <div className="replies mt-3 ps-3 border-start">
+                          {(repliesByParentId[comment.id] || []).map((reply) => (
+                            <div key={reply.id} className="reply-item mb-3">
+                              <div className="d-flex gap-2">
+                                <Link
+                                  to={`/profile/${reply.userId || reply.userName}`}
+                                  className="text-decoration-none"
+                                >
+                                  <UserAvatar
+                                    user={{
+                                      avatar: reply.userAvatar,
+                                      username: reply.userName
+                                    }}
+                                    size={32}
+                                    className="flex-shrink-0"
+                                    style={{ cursor: 'pointer' }}
+                                  />
+                                </Link>
+                                <div className="flex-grow-1">
+                                  <div className="comment-header d-flex align-items-center gap-2 mb-1">
+                                    <Link
+                                      to={`/profile/${reply.userId || reply.userName}`}
+                                      className="text-decoration-none"
+                                    >
+                                      <strong className="comment-author" style={{ cursor: 'pointer', color: 'inherit' }}>
+                                        {reply.userName || 'Anonymous'}
+                                      </strong>
+                                    </Link>
+                                    <span className="text-muted small">
+                                      {formatTimeAgo(reply.createdAt)}
+                                    </span>
+                                  </div>
+                                  <div className="comment-content mb-2">
+                                    {reply.content}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>
@@ -332,6 +431,10 @@ export default function EnhancedCommentSection({
           border-radius: 0.375rem;
           padding: 1rem;
           margin-top: 0.5rem;
+        }
+
+        .replies {
+          border-left-color: #e9ecef !important;
         }
       `}</style>
     </div>

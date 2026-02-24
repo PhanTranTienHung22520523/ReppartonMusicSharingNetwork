@@ -11,7 +11,23 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const loadUser = () => {
       try {
+        // Frontend-only UI testing: if mock admin is enabled, ensure we have an ADMIN user
+        // so ProtectedRoute(/admin) works without backend.
+        const mockAdminEnabled = String(import.meta.env.VITE_MOCK_ADMIN).toLowerCase() === "true";
         const savedUser = localStorage.getItem("user");
+        if (!savedUser && mockAdminEnabled) {
+          const mockUser = {
+            id: "dev_admin",
+            email: "admin@local.test",
+            username: "admin",
+            token: "devtoken",
+            roles: ["ADMIN"],
+            role: "ADMIN",
+          };
+          localStorage.setItem("user", JSON.stringify(mockUser));
+          setUser(mockUser);
+          return;
+        }
         if (savedUser) {
           const userData = JSON.parse(savedUser);
           if (userData.token && userData.email) {
@@ -121,11 +137,11 @@ export function AuthProvider({ children }) {
   };
 
   const isArtist = () => {
-    return user && user.role === "ARTIST";
+    return user && (user.roles?.includes("ARTIST") || user.role === "ARTIST");
   };
 
   const isAdmin = () => {
-    return user && user.role === "ADMIN";
+    return user && (user.roles?.includes("ADMIN") || user.role === "ADMIN");
   };
 
   const value = {

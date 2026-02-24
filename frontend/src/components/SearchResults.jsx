@@ -1,13 +1,80 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import SongCard from './SongCard';
 import UserAvatar from './UserAvatar';
 import FollowButton from './FollowButton';
 import { FaMusic, FaUser, FaUsers, FaPlay, FaHeart, FaShare, FaEye } from 'react-icons/fa';
+import { useAuth } from '../contexts/AuthContext';
+import { getFollowing, getFollowStats } from '../api/followService';
 
 const SearchResults = ({ results, loading, query, activeTab, sortBy }) => {
+  const { user: currentUser } = useAuth();
+
+  const isArtistAccount = (u) => Boolean(u?.roles?.includes?.('ARTIST') || u?.role === 'ARTIST');
+
   // Debug: Log received results
   console.log("SearchResults received:", { results, activeTab, sortBy });
+
+  const [userMeta, setUserMeta] = useState({});
+
+  useEffect(() => {
+    const users = Array.isArray(results?.users) ? results.users : [];
+    if (users.length === 0) return;
+
+    let cancelled = false;
+
+    const getUserKey = (u) => String(u?.id || u?.userId || u?.username || '');
+
+    const loadMeta = async () => {
+      try {
+        let followingSet = new Set();
+        if (currentUser?.id) {
+          const myFollowing = await getFollowing(currentUser.id).catch(() => []);
+          followingSet = new Set(
+            (Array.isArray(myFollowing) ? myFollowing : [])
+              .map(r => String((r?.user || r)?.userId || (r?.user || r)?.id || (r?.user || r)?.followingId || r?.followingId || ''))
+              .filter(Boolean)
+          );
+        }
+
+        const metaEntries = await Promise.all(
+          users.map(async (u) => {
+            const key = getUserKey(u);
+            if (!key) return [key, null];
+
+            const isFollowing = currentUser?.id ? followingSet.has(String(u?.id || u?.userId || '')) : false;
+
+            // Prefer already-provided followerCount if present, otherwise fetch stats.
+            let followers = typeof u?.followerCount === 'number' ? u.followerCount : undefined;
+            if (followers === undefined && u?.username) {
+              const byUsername = await getFollowStats(u.username).catch(() => null);
+              if (byUsername && typeof byUsername.followers === 'number') followers = byUsername.followers;
+            }
+            if (followers === undefined) followers = 0;
+
+            return [key, { isFollowing, followers }];
+          })
+        );
+
+        if (cancelled) return;
+
+        setUserMeta((prev) => {
+          const next = { ...prev };
+          for (const [k, v] of metaEntries) {
+            if (k && v) next[k] = v;
+          }
+          return next;
+        });
+      } catch (e) {
+        console.error('Failed to load follow meta for search results:', e);
+      }
+    };
+
+    loadMeta();
+    return () => {
+      cancelled = true;
+    };
+  }, [results?.users, currentUser?.id]);
   
   // Sort results based on sortBy option
   const sortedResults = useMemo(() => {
@@ -63,21 +130,73 @@ const SearchResults = ({ results, loading, query, activeTab, sortBy }) => {
 
   if (!sortedResults || (!sortedResults.songs?.length && !sortedResults.users?.length && !sortedResults.playlists?.length)) {
     return (
-      <div className="text-center py-5">
-        <FaMusic size={48} className="text-muted mb-3 opacity-50" />
-        <h5 className="mb-2">No results found</h5>
-        <p className="text-muted mb-4">
-          {query ? `No results found for "${query}"` : 'Enter a search term to find music, artists, and playlists'}
-        </p>
-        <div className="d-flex justify-content-center">
-          <div className="text-start">
-            <p className="mb-2"><strong>Try:</strong></p>
-            <ul className="list-unstyled text-muted">
-              <li>• Using different keywords</li>
-              <li>• Checking your spelling</li>
-              <li>• Using more general terms</li>
-              <li>• Searching for artist names or song titles</li>
-            </ul>
+      <div className="py-4">
+        <div className="text-center py-4">
+          <FaMusic size={48} className="text-muted mb-3 opacity-50" />
+          <h5 className="mb-2">No results found for "{query}"</h5>
+          <p className="text-muted mb-4">
+            We couldn't find any songs, artists, or playlists matching your search.
+          </p>
+        </div>
+
+        {/* Search Tips */}
+        <div className="row mb-5">
+          <div className="col-md-6 offset-md-3">
+            <div className="card border-0 bg-light">
+              <div className="card-body">
+                <h6 className="mb-3"><strong>Search Tips:</strong></h6>
+                <ul className="list-unstyled text-muted mb-0">
+                  <li className="mb-2">✓ Try using different keywords</li>
+                  <li className="mb-2">✓ Check your spelling</li>
+                  <li className="mb-2">✓ Use more general terms</li>
+                  <li className="mb-2">✓ Search for artist names or song titles</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Trending Artists Suggestion */}
+        <div className="mb-5">
+          <h5 className="mb-4 text-center">
+            <FaUser className="me-2 text-primary" />
+            Discover Popular Artists
+          </h5>
+          <div className="text-center">
+            <p className="text-muted mb-3">Explore trending artists and discover new music</p>
+            <div className="d-flex flex-wrap justify-content-center gap-2">
+              {["Pop", "Rock", "Hip Hop", "R&B", "Electronic", "Jazz", "Classical", "Indie"].map((genre) => (
+                <span key={genre} className="badge bg-primary-subtle text-primary fs-6 px-3 py-2">
+                  {genre}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Popular Searches */}
+        <div>
+          <h5 className="mb-4 text-center">
+            <FaMusic className="me-2 text-primary" />
+            Popular Searches
+          </h5>
+          <div className="row justify-content-center">
+            <div className="col-md-8">
+              <div className="d-flex flex-wrap justify-content-center gap-2">
+                {[
+                  "New Releases", "Top Charts", "Acoustic", "Workout", 
+                  "Chill Vibes", "Party Mix", "Study Music", "Sleep Sounds"
+                ].map((term) => (
+                  <Link 
+                    key={term} 
+                    to={`/search?q=${encodeURIComponent(term)}`}
+                    className="btn btn-outline-primary btn-sm"
+                  >
+                    {term}
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -161,6 +280,9 @@ const SearchResults = ({ results, loading, query, activeTab, sortBy }) => {
                       />
                       <h6 className="card-title mb-1 text-truncate text-dark">
                         {user.fullName || user.username}
+                        {isArtistAccount(user) ? (
+                          <i className="bi bi-patch-check-fill verified-tick" title="Nghệ sĩ" aria-label="Nghệ sĩ" />
+                        ) : null}
                       </h6>
                       <p className="text-muted small mb-2">
                         @{user.username}
@@ -184,8 +306,8 @@ const SearchResults = ({ results, loading, query, activeTab, sortBy }) => {
                     {/* Stats */}
                     <div className="row text-center mb-2">
                       <div className="col-4">
-                        <small className="text-muted d-block">Followers</small>
-                        <small className="fw-bold">{user.followerCount || 0}</small>
+                        <small className="text-muted d-block" style={{ whiteSpace: 'nowrap', wordBreak: 'keep-all' }}>Followers</small>
+                        <small className="fw-bold">{userMeta[String(user.id || user.userId || user.username || '')]?.followers ?? user.followerCount ?? 0}</small>
                       </div>
                       <div className="col-4">
                         <small className="text-muted d-block">Songs</small>
@@ -197,11 +319,15 @@ const SearchResults = ({ results, loading, query, activeTab, sortBy }) => {
                       </div>
                     </div>
 
-                    <FollowButton 
-                      targetUserId={user.id} 
-                      size="sm"
-                      className="w-100"
-                    />
+                    <div className="d-flex justify-content-center">
+                      <FollowButton
+                        userId={String(user.id || user.userId || '')}
+                        initialFollowing={Boolean(userMeta[String(user.id || user.userId || user.username || '')]?.isFollowing)}
+                        size="small"
+                        minWidth="unset"
+                        style={{ width: 'fit-content' }}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

@@ -84,11 +84,14 @@ class MusicAnalyzer:
     
     def _analyze_key(self, y: np.ndarray, sr: int) -> str:
         """
-        Analyze musical key using chroma features
+        Analyze musical key using chroma features and harmonic separation
         """
         try:
-            # Extract chroma features
-            chroma = librosa.feature.chroma_cqt(y=y, sr=sr)
+            # HPSS to focus on harmonic content
+            y_harmonic = librosa.effects.harmonic(y)
+            
+            # Extract chroma features (CENS is robust for key detection)
+            chroma = librosa.feature.chroma_cens(y=y_harmonic, sr=sr)
             
             # Average chroma across time
             chroma_mean = np.mean(chroma, axis=1)
@@ -299,17 +302,28 @@ class MusicAnalyzer:
     def _analyze_chords(self, y: np.ndarray, sr: int) -> Dict[str, Any]:
         """
         Analyze chord progression throughout the song
+        Optimized with HPSS and Chroma CENS
         
         Returns:
             Dictionary containing chord analysis results
         """
         try:
-            # Extract chroma features for chord detection
-            chroma = librosa.feature.chroma_cqt(y=y, sr=sr, bins_per_octave=36)
+            # 1. Harmonic-Percussive Source Separation (HPSS)
+            # We only care about the harmonic component for chords
+            y_harmonic = librosa.effects.harmonic(y)
             
-            # Get beat positions for chord segmentation
+            # 2. Extract chroma features (CENS is more robust to transients)
+            chroma = librosa.feature.chroma_cens(y=y_harmonic, sr=sr)
+            
+            # 3. Get beat positions for chord segmentation
             tempo, beat_frames = librosa.beat.beat_track(y=y, sr=sr)
             
+            # Estimate Key context first for "Key-Aware Decoding"
+            # This helps clean up non-diatonic chords (e.g. G#maj7 in G# minor)
+            detected_key_str = self._analyze_key(y, sr)
+            diatonic_chords = self._get_diatonic_chords_for_key(detected_key_str)
+            logger.info(f"Key-Aware Decoding: Key={detected_key_str}, Diatonic={diatonic_chords}")
+
             # Segment audio into beat-synchronized windows
             hop_length = 512
             beat_times = librosa.frames_to_time(beat_frames, sr=sr, hop_length=hop_length)
@@ -318,7 +332,7 @@ class MusicAnalyzer:
             chord_templates = self._get_chord_templates()
             
             # Detect chords for each segment
-            chord_progression = []
+            raw_progression = []
             chord_confidence = []
             
             for i in range(len(beat_frames) - 1):
@@ -333,34 +347,121 @@ class MusicAnalyzer:
                 chroma_mean = np.mean(segment_chroma, axis=1)
                 
                 # Find best matching chord
-                best_chord = None
+                best_chord = "N/A"
                 best_score = -1
                 
                 for chord_name, template in chord_templates.items():
                     # Cosine similarity
-                    score = np.dot(chroma_mean, template) / (np.linalg.norm(chroma_mean) * np.linalg.norm(template))
+                    denom = (np.linalg.norm(chroma_mean) * np.linalg.norm(template))
+                    score = np.dot(chroma_mean, template) / (denom + 1e-6)
+                    
+                    # Key-Aware Bias: Boost diatonic chords
+                    if chord_name in diatonic_chords:
+                        score *= 1.3  # 30% boost for diatonic chords
+                    
+                    # Penalty for unlikely chords (Aug/Dim) unless they really match
+                    if 'aug' in chord_name or 'dim' in chord_name:
+                        score *= 0.85
+                    
                     if score > best_score:
                         best_score = score
                         best_chord = chord_name
                 
-                if best_chord:
-                    chord_progression.append({
-                        'chord': best_chord,
-                        'start_time': float(beat_times[i]),
-                        'confidence': float(best_score)
-                    })
-                    chord_confidence.append(float(best_score))
+                raw_progression.append(best_chord)
+                chord_confidence.append(float(best_score))
+            
+            # 4. Smoothing: Apply median-like filtering to reduce "chord flickering"
+            # We use a sliding window modal filter
+            smoothed_progression = []
+            window_size = 5  # increased from 3 for better stability
+            for i in range(len(raw_progression)):
+                start = max(0, i - window_size // 2)
+                end = min(len(raw_progression), i + window_size // 2 + 1)
+                neighborhood = raw_progression[start:end]
+                # Pick the most frequent chord in the neighborhood
+                from collections import Counter
+                most_common = Counter(neighborhood).most_common(1)[0][0]
+                smoothed_progression.append(most_common)
+            
+            # Convert back to structured format
+            chord_progression = []
+            for i, chord in enumerate(smoothed_progression):
+                chord_progression.append({
+                    'chord': chord,
+                    'start_time': float(beat_times[i]),
+                    'confidence': float(chord_confidence[i])
+                })
             
             # Analyze chord progression patterns
             progression_analysis = self._analyze_progression(chord_progression)
-            
+
+            # Heuristic: detect a dominant repeating loop (common short subsequence)
+            dominant_loop = {}
+            try:
+                chord_names = [c['chord'] for c in chord_progression]
+                best = None  # tuple (window_size, seq_tuple, count)
+                n = len(chord_names)
+                max_window = min(8, max(2, n // 2))
+                for w in range(2, max_window + 1):
+                    counts = {}
+                    for i in range(0, n - w + 1):
+                        tup = tuple(chord_names[i:i + w])
+                        counts[tup] = counts.get(tup, 0) + 1
+                    if counts:
+                        seq, cnt = max(counts.items(), key=lambda x: x[1])
+                        # score: occurrences normalized by possible windows
+                        possible = max(1, n - w + 1)
+                        score = cnt / possible
+                        # prefer higher score, longer window as tie-breaker
+                        cand = (score, w, seq, cnt)
+                        if best is None or (cand[0] > best[0] or (abs(cand[0] - best[0]) < 1e-6 and cand[1] > best[1])):
+                            best = cand
+                if best and best[3] >= 2 and best[0] > 0.05:
+                    # Validate occurrences for non-overlapping repeats
+                    seq = list(best[2])
+                    
+                    # Ignore trivial loops (all chords same)
+                    if len(set(seq)) == 1:
+                        # Fallback: try to find a better loop?
+                        # For now, just invalidate this one so we don't show "E -> E"
+                        dominant_loop = {'sequence': [], 'occurrences': 0, 'window_length': 0, 'score': 0.0, 'valid': False}
+                    else:
+                        w = int(best[1])
+                        # find all start indices where this sequence occurs
+                        indices = [i for i in range(0, n - w + 1) if chord_names[i:i + w] == seq]
+                        # count non-overlapping occurrences
+                        non_overlap = 0
+                        last = -w
+                        for idx in indices:
+                            if idx - last >= w:
+                                non_overlap += 1
+                                last = idx
+
+                        # apply a slightly stricter threshold: need at least 2 non-overlapping occurrences
+                        valid = non_overlap >= 2 and (non_overlap * w) >= 3 and best[0] > 0.08
+
+                        dominant_loop = {
+                            'sequence': seq if valid else [],
+                            'occurrences': int(non_overlap) if valid else 0,
+                            'window_length': w if valid else 0,
+                            'score': float(best[0]) if valid else 0.0,
+                            'valid': bool(valid),
+                            'raw_occurrences': int(best[3])
+                        }
+                else:
+                    dominant_loop = {'sequence': [], 'occurrences': 0, 'window_length': 0, 'score': 0.0, 'valid': False, 'raw_occurrences': 0}
+            except Exception:
+                dominant_loop = {'sequence': [], 'occurrences': 0, 'window_length': 0, 'score': 0.0}
+
             return {
                 'progression': chord_progression,
-                'unique_chords': list(set([c['chord'] for c in chord_progression])),
+                'progression': chord_progression,
+                'unique_chords': sorted(list(set([c['chord'] for c in chord_progression]))),
                 'chord_count': len(chord_progression),
                 'average_confidence': float(np.mean(chord_confidence)) if chord_confidence else 0.0,
                 'progression_analysis': progression_analysis,
-                'key_compatibility': self._analyze_key_compatibility(chord_progression)
+                'key_compatibility': self._analyze_key_compatibility(chord_progression),
+                'dominant_loop': dominant_loop
             }
             
         except Exception as e:
@@ -579,3 +680,55 @@ class MusicAnalyzer:
         except Exception as e:
             logger.error(f"Error extracting features: {str(e)}")
             raise
+
+    def _get_diatonic_chords_for_key(self, key_str: str) -> List[str]:
+        """
+        Get list of likely chords for a given key string (e.g. "C major")
+        """
+        try:
+            # Parse root and scale
+            parts = key_str.split()
+            if len(parts) < 2:
+                return []
+            
+            root = parts[0]
+            scale = parts[1].lower() # major or minor
+            
+            notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+            root_idx = notes.index(root)
+            
+            diatonic = []
+            
+            if scale == 'major':
+                # I (Maj), ii (min), iii (min), IV (Maj), V (Maj), vi (min), vii (dim)
+                # Offsets from root
+                indices = [0, 2, 4, 5, 7, 9, 11]
+                types = ['', 'm', 'm', '', '', 'm', 'dim']
+                # Extended types usually found
+                ext_types = ['maj7', 'm7', 'm7', 'maj7', '7', 'm7', 'dim7']
+                
+                for i, offset in enumerate(indices):
+                    note = notes[(root_idx + offset) % 12]
+                    diatonic.append(f"{note}{types[i]}")
+                    diatonic.append(f"{note}{ext_types[i]}")
+
+            elif scale == 'minor':
+                # Natural Minor: i, ii(dim), III, iv, v, VI, VII
+                # Harmonic Minor often makes v -> V
+                # i (min), ii (dim), III (Maj), iv (min), v (min/Maj), VI (Maj), VII (Maj)
+                indices = [0, 2, 3, 5, 7, 8, 10]
+                types = ['m', 'dim', '', 'm', 'm', '', '']
+                
+                for i, offset in enumerate(indices):
+                    note = notes[(root_idx + offset) % 12]
+                    diatonic.append(f"{note}{types[i]}")
+                    # Special handling for V in minor (harmonic minor)
+                    if i == 4: # index 4 is the 5th degree
+                        diatonic.append(f"{note}") # Major V
+                        diatonic.append(f"{note}7") # V7
+                
+            return diatonic
+            
+        except Exception as e:
+            logger.warning(f"Error generating diatonic chords for {key_str}: {e}")
+            return []

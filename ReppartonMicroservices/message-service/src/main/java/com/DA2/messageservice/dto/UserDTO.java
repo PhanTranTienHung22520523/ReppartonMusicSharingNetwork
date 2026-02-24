@@ -5,6 +5,8 @@ public class UserDTO {
     private String username;
     private String fullName;
     private String avatar;
+    private String role; // USER, ARTIST
+    private boolean allowNormalUserMessages; // For artists: allow normal users to send DMs
 
     public UserDTO() {}
 
@@ -46,5 +48,21 @@ public class UserDTO {
 
     public void setAvatar(String avatar) {
         this.avatar = avatar;
+    }
+    
+    public String getRole() {
+        return role;
+    }
+    
+    public void setRole(String role) {
+        this.role = role;
+    }
+    
+    public boolean isAllowNormalUserMessages() {
+        return allowNormalUserMessages;
+    }
+    
+    public void setAllowNormalUserMessages(boolean allowNormalUserMessages) {
+        this.allowNormalUserMessages = allowNormalUserMessages;
     }
 }

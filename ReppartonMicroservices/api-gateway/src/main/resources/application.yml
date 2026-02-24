@@ -3,28 +3,130 @@ spring:
     name: api-gateway
   cloud:
     gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials
       discovery:
         locator:
-          enabled: true
+          enabled: false
           lower-case-service-id: true
       routes:
-        # User Service Routes
+        # Auth Routes (Public - No Auth Required for login/register)
+        - id: auth-public
+          uri: lb://user-service
+          predicates:
+            - Path=/api/auth/**
+          
+        # User Service Routes (profile public)
+        - id: user-profile-public
+          uri: lb://user-service
+          predicates:
+            - Path=/api/users/*/profile
+            - Method=GET
+
+        # User Service Routes (public user info)
+        - id: user-public
+          uri: lb://user-service
+          predicates:
+            - Path=/api/users/public/**
+            - Method=GET
+
+        # User Service Routes (Protected)
         - id: user-service
           uri: lb://user-service
           predicates:
-            - Path=/api/users/**, /api/auth/**
+            - Path=/api/users/**
           filters:
             - name: JwtAuthenticationFilter
 
-        # Song Service Routes
-        - id: song-service
+        # Admin Routes (Protected)
+        - id: admin-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/admin/**
+          filters:
+            - name: JwtAuthenticationFilter
+
+        # Song Service Public Routes (Browse, Search)
+        - id: song-service-public
           uri: lb://song-service
           predicates:
-            - Path=/api/songs/**, /api/genres/**
+            - Path=/api/songs/**
+            - Method=GET
+          
+        # Genre Service Routes
+        - id: genre-service-public
+          uri: lb://genre-service
+          predicates:
+            - Path=/api/genres/**
+            - Method=GET
+
+        - id: genre-service-protected
+          uri: lb://genre-service
+          predicates:
+            - Path=/api/genres/**
+            - Method=POST,PUT,DELETE
+          filters:
+            - name: JwtAuthenticationFilter
+          
+        # Song Service Protected Routes (Upload, Update, Delete)
+        # Allow public AI analysis endpoints (no auth) before protected POST routes
+        - id: song-analyze-public
+          uri: lb://song-service
+          predicates:
+            - Path=/api/songs/*/analyze
+            - Method=POST
+
+        - id: song-analyze-chords-public
+          uri: lb://song-service
+          predicates:
+            - Path=/api/songs/*/analyze-chords
+            - Method=POST
+
+        - id: song-service-protected
+          uri: lb://song-service
+          predicates:
+            - Path=/api/songs/**
+            - Method=POST,PUT,DELETE
           filters:
             - name: JwtAuthenticationFilter
 
         # Social Service Routes
+        # Social Service Public Routes (Followers)
+        - id: social-service-followers-public
+          uri: lb://social-service
+          predicates:
+            - Path=/api/social/followers/**
+            - Method=GET
+
+        # Social Service Public Routes (Following)
+        - id: social-service-following-public
+          uri: lb://social-service
+          predicates:
+            - Path=/api/social/following/**
+            - Method=GET
+
+        # Social Service Public Routes (Stats)
+        - id: social-service-stats-public
+          uri: lb://social-service
+          predicates:
+            - Path=/api/social/stats/**
+            - Method=GET
+            
+        # Social Service Public Routes (is-following check)
+        - id: social-service-is-following-public
+          uri: lb://social-service
+          predicates:
+            - Path=/api/social/is-following
+            - Method=GET
+
+        # Social Service Public Routes (Counts)
+        - id: social-service-counts-public
+          uri: lb://social-service
+          predicates:
+            - Path=/api/social/likes/count, /api/social/shares/count
+            - Method=GET
+
+        # Social Service Protected Routes
         - id: social-service
           uri: lb://social-service
           predicates:
@@ -32,27 +134,158 @@ spring:
           filters:
             - name: JwtAuthenticationFilter
 
-        # Playlist Service Routes
-        - id: playlist-service
+        # Playlist Service Public Routes (View playlists)
+        - id: playlist-service-user-protected
           uri: lb://playlist-service
           predicates:
-            - Path=/api/playlists/**
+            - Path=/api/playlists/user/**
+            - Method=GET
           filters:
             - name: JwtAuthenticationFilter
 
-        # Comment Service Routes
-        - id: comment-service
+        - id: playlist-service-public
+          uri: lb://playlist-service
+          predicates:
+            - Path=/api/playlists/**
+            - Method=GET
+            
+        # Playlist Service Protected Routes (Create, Update, Delete, Add songs)
+        - id: playlist-service-protected
+          uri: lb://playlist-service
+          predicates:
+            - Path=/api/playlists/**
+            - Method=POST,PUT,DELETE
+          filters:
+            - name: JwtAuthenticationFilter
+
+        # Comment Service Public Routes (View comments)
+        - id: comment-service-public
+          uri: lb://comment-service
+          predicates:
+            - Path=/api/comments/**, /api/comments
+            - Method=GET
+            
+        # Comment Service Protected Routes (Create, Update, Delete comments)
+        - id: comment-service-protected
           uri: lb://comment-service
           predicates:
             - Path=/api/comments/**
+            - Method=POST,PUT,DELETE
+          filters:
+            - name: JwtAuthenticationFilter
+            
+        # Device Management Routes (Protected - User's devices)
+        - id: device-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/devices/**
+          filters:
+            - name: JwtAuthenticationFilter
+
+        # Artist Groups Routes (Message Service)
+        # Protected: user's joined groups
+        - id: artist-groups-member-protected
+          uri: lb://message-service
+          predicates:
+            - Path=/api/artist-groups/member/**
+            - Method=GET
+          filters:
+            - name: JwtAuthenticationFilter
+
+        # Public: browse groups
+        - id: artist-groups-public
+          uri: lb://message-service
+          predicates:
+            - Path=/api/artist-groups/**
+            - Method=GET
+
+        # Protected: create/update/delete/join/leave/posts/messages
+        - id: artist-groups-protected
+          uri: lb://message-service
+          predicates:
+            - Path=/api/artist-groups/**
+            - Method=POST,PUT,DELETE
+          filters:
+            - name: JwtAuthenticationFilter
+
+        # Group Conversations Routes (Message Service)
+        # Public: browse groups / read public summary
+        - id: group-conversations-public
+          uri: lb://message-service
+          predicates:
+            - Path=/api/groups/public/**, /api/groups/public
+            - Method=GET
+
+        # Public: pinned groups on artist profiles
+        - id: group-conversations-pinned-public
+          uri: lb://message-service
+          predicates:
+            - Path=/api/groups/pinned/**
+            - Method=GET
+
+        # Protected: user's groups + join/leave + group actions/messages
+        - id: group-conversations-protected
+          uri: lb://message-service
+          predicates:
+            - Path=/api/groups/**, /api/groups
+            - Method=GET,POST,PUT,DELETE
+          filters:
+            - name: JwtAuthenticationFilter
+
+        # Post Service Public Routes (View posts)
+        - id: post-service-public
+          uri: lb://post-service
+          predicates:
+            - Path=/api/posts, /api/posts/*, /api/posts/user/*
+            - Method=GET
+
+        # Post statistics public (for counts)
+        - id: post-service-stats-public
+          uri: lb://post-service
+          predicates:
+            - Path=/api/posts/*/statistics
+            - Method=GET
+            
+        # Post Service Protected Routes (Create, Update, Delete)
+        - id: post-service-protected
+          uri: lb://post-service
+          predicates:
+            - Path=/api/posts/**
+            - Method=POST,PUT,DELETE
+          filters:
+            - name: JwtAuthenticationFilter
+
+        # Story Service Public Routes (View public stories)
+        - id: story-service-public
+          uri: lb://story-service
+          predicates:
+            - Path=/api/stories/all, /api/stories/*/**, /api/stories/user/*/public
+            - Method=GET
+            
+        # Story Service Protected Routes (Create, Delete, View private)
+        - id: story-service-protected
+          uri: lb://story-service
+          predicates:
+            - Path=/api/stories/**
           filters:
             - name: JwtAuthenticationFilter
 
         # Notification Service Routes
+        - id: notification-service-ws
+          uri: ws://localhost:8086
+          predicates:
+            - Path=/ws/notifications/**
+            
         - id: notification-service
           uri: lb://notification-service
           predicates:
-            - Path=/api/notifications/**, /ws/notifications/**
+            - Path=/api/notifications/**
+
+        # Message Service Routes (REST + WebSocket)
+        - id: message-service
+          uri: lb://message-service
+          predicates:
+            - Path=/api/messages/**, /ws/messages/**
           filters:
             - name: JwtAuthenticationFilter
 
@@ -64,10 +297,50 @@ spring:
           filters:
             - name: JwtAuthenticationFilter
 
+        # Search Service Routes (Public - No Auth Required)
+        - id: search-service
+          uri: lb://search-service
+          predicates:
+            - Path=/api/search/**
+
+        # File Storage Service Routes (Protected)
+        - id: file-storage-service
+          uri: lb://file-storage-service
+          predicates:
+            - Path=/api/files/**
+          filters:
+            - name: JwtAuthenticationFilter
+
+        # Report Service Routes (Protected)
+        - id: report-service
+          uri: lb://report-service
+          predicates:
+            - Path=/api/reports/**
+          filters:
+            - name: JwtAuthenticationFilter
+
+        # Recommendation Service Routes (Protected)
+        - id: recommendation-service
+          uri: lb://recommendation-service
+          predicates:
+            - Path=/api/recommendations/**
+          filters:
+            - name: JwtAuthenticationFilter
+
+        # Analytics Service Routes (Protected)
+        - id: analytics-service
+          uri: lb://analytics-service
+          predicates:
+            - Path=/api/analytics/**
+          filters:
+            - name: JwtAuthenticationFilter
+
       globalcors:
+        add-to-simple-url-handler-mapping: true
         cors-configurations:
           '[/**]':
-            allowedOriginPatterns: "${CORS_ALLOWED_ORIGINS:*}"
+            allowedOrigins:
+              - "http://localhost:5173"
             allowedMethods:
               - GET
               - POST
@@ -76,6 +349,7 @@ spring:
               - OPTIONS
             allowedHeaders: "*"
             allowCredentials: true
+            maxAge: 3600
 
 server:
   port: ${SERVER_PORT:8090}
@@ -94,7 +368,8 @@ management:
         include: health,info,gateway
 
 jwt:
-  secret: ${JWT_SECRET:repparton-secret-key-for-jwt-authentication-2024}
+  # Must match user-service signing secret (or set JWT_SECRET env var consistently)
+  secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970337336763979244226452948404D635166546A576E5A7234753778214125442A}
 
 logging:
   level:

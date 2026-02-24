@@ -1,20 +1,39 @@
 package com.DA2.commentservice.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Document(collection = "comments")
 public class Comment {
     @Id
     private String id;
     private String userId;
+    private String userName;
+    private String userAvatar;
     private String songId;
     private String postId;
     private String playlistId;
     private String parentId; // For replies
     private String content;
     private int likes = 0;
+
+    /**
+     * Internal unique likers (per-user toggle support). Not exposed to clients.
+     */
+    @JsonIgnore
+    private Set<String> likedBy = new HashSet<>();
+
+    /**
+     * Derived for the current viewer; computed server-side when a token is present.
+     */
+    @Transient
+    private Boolean liked = false;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -35,6 +54,12 @@ public class Comment {
     
     public String getUserId() { return userId; }
     public void setUserId(String userId) { this.userId = userId; }
+
+    public String getUserName() { return userName; }
+    public void setUserName(String userName) { this.userName = userName; }
+
+    public String getUserAvatar() { return userAvatar; }
+    public void setUserAvatar(String userAvatar) { this.userAvatar = userAvatar; }
     
     public String getSongId() { return songId; }
     public void setSongId(String songId) { this.songId = songId; }
@@ -53,6 +78,12 @@ public class Comment {
     
     public int getLikes() { return likes; }
     public void setLikes(int likes) { this.likes = likes; }
+
+    public Set<String> getLikedBy() { return likedBy; }
+    public void setLikedBy(Set<String> likedBy) { this.likedBy = likedBy; }
+
+    public Boolean getLiked() { return liked; }
+    public void setLiked(Boolean liked) { this.liked = liked; }
     
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

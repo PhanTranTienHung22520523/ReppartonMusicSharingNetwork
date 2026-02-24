@@ -1,151 +1,81 @@
-import { API_ENDPOINTS, getAuthToken, createHeaders } from '../config/api.config';
+import { API_ENDPOINTS, createHeaders } from '../config/api.config';
 
-const API_URL = API_ENDPOINTS.likes;
+const SOCIAL_API_URL = API_ENDPOINTS.social;
+const LIKE_ENDPOINT = `${SOCIAL_API_URL}/like`;
+const ITEM_TYPES = {
+  POST: 'POST',
+  SONG: 'SONG',
+};
 
-// Like a post
-export async function likePost(postId) {
-  try {
-    const res = await fetch(`${API_URL}/post/${postId}`, {
-      method: "POST",
-      headers: createHeaders(true),
-    });
-    
+const buildQueryString = (params = {}) => new URLSearchParams(params).toString();
+
+const likeItem = async (itemId, itemType) => {
+  const res = await fetch(LIKE_ENDPOINT, {
+    method: "POST",
+    headers: createHeaders(true),
+    body: JSON.stringify({ itemId, itemType }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || 'Failed to like item');
+  }
+  return data;
+};
+
+const unlikeItem = async (itemId, itemType) => {
+  const params = buildQueryString({ itemId, itemType });
+  const res = await fetch(`${LIKE_ENDPOINT}?${params}`, {
+    method: "DELETE",
+    headers: createHeaders(true),
+  });
+  if (!res.ok) {
     const data = await res.json();
-    
-    if (!res.ok) {
-      throw new Error(data.message || "Failed to like post");
-    }
-    
-    return data;
-  } catch (error) {
-    throw new Error(error.message || "Network error");
+    throw new Error(data.message || 'Failed to unlike item');
   }
+  return { success: true };
+};
+
+const isItemLiked = async (itemId, itemType) => {
+  const params = buildQueryString({ itemId, itemType });
+  const res = await fetch(`${SOCIAL_API_URL}/is-liked?${params}`, {
+    headers: createHeaders(true),
+  });
+  if (!res.ok) {
+    return false;
+  }
+  const data = await res.json();
+  return Boolean(data.liked);
+};
+
+const fetchUserLikes = async (userId) => {
+  const res = await fetch(`${SOCIAL_API_URL}/likes/user/${userId}`, {
+    headers: createHeaders(true),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to fetch liked items');
+  }
+  return await res.json();
+};
+
+export const likePost = (postId) => likeItem(postId, ITEM_TYPES.POST);
+export const unlikePost = (postId) => unlikeItem(postId, ITEM_TYPES.POST);
+export const likeSong = (songId) => likeItem(songId, ITEM_TYPES.SONG);
+export const unlikeSong = (songId) => unlikeItem(songId, ITEM_TYPES.SONG);
+
+export async function getLikedPosts(userId) {
+  const likes = await fetchUserLikes(userId);
+  return likes.filter((like) => like.itemType?.toUpperCase() === ITEM_TYPES.POST);
 }
 
-// Unlike a post
-export async function unlikePost(postId) {
-  try {
-    const res = await fetch(`${API_URL}/post/${postId}`, {
-      method: "DELETE",
-      headers: createHeaders(true),
-    });
-    
-    if (!res.ok) {
-      throw new Error("Failed to unlike post");
-    }
-    
-    return { success: true, message: "Post unliked successfully" };
-  } catch (error) {
-    throw new Error(error.message || "Network error");
-  }
+export async function getLikedSongs(userId) {
+  const likes = await fetchUserLikes(userId);
+  return likes.filter((like) => like.itemType?.toUpperCase() === ITEM_TYPES.SONG);
 }
 
-// Like a song
-export async function likeSong(songId) {
-  try {
-    const res = await fetch(`${API_URL}/song/${songId}`, {
-      method: "POST",
-      headers: createHeaders(true),
-    });
-    
-    const data = await res.json();
-    
-    if (!res.ok) {
-      throw new Error(data.message || "Failed to like song");
-    }
-    
-    return data;
-  } catch (error) {
-    throw new Error(error.message || "Network error");
-  }
-}
-
-// Unlike a song
-export async function unlikeSong(songId) {
-  try {
-    const res = await fetch(`${API_URL}/song/${songId}`, {
-      method: "DELETE",
-      headers: createHeaders(true),
-    });
-    
-    if (!res.ok) {
-      throw new Error("Failed to unlike song");
-    }
-    
-    return { success: true, message: "Song unliked successfully" };
-  } catch (error) {
-    throw new Error(error.message || "Network error");
-  }
-}
-
-// Get posts liked by user
-export async function getLikedPosts(userId, page = 0, size = 20) {
-  try {
-    const res = await fetch(`${API_URL}/user/${userId}/posts?page=${page}&size=${size}`, {
-      headers: createHeaders(false),
-    });
-    
-    if (!res.ok) {
-      throw new Error("Failed to fetch liked posts");
-    }
-    
-    return await res.json();
-  } catch (error) {
-    throw new Error(error.message || "Network error");
-  }
-}
-
-// Get songs liked by user
-export async function getLikedSongs(userId, page = 0, size = 20) {
-  try {
-    const res = await fetch(`${API_URL}/user/${userId}/songs?page=${page}&size=${size}`, {
-      headers: createHeaders(false),
-    });
-    
-    if (!res.ok) {
-      throw new Error("Failed to fetch liked songs");
-    }
-    
-    return await res.json();
-  } catch (error) {
-    throw new Error(error.message || "Network error");
-  }
-}
-
-// Check if user liked a post
 export async function isPostLiked(postId, userId) {
-  try {
-    const res = await fetch(`${API_URL}/post/${postId}/user/${userId}`, {
-      headers: createHeaders(false),
-    });
-    
-    if (!res.ok) {
-      return false;
-    }
-    
-    const data = await res.json();
-    return data.liked || false;
-  } catch (error) {
-    console.error("Error checking if post is liked:", error);
-    return false;
-  }
+  return isItemLiked(postId, ITEM_TYPES.POST);
 }
 
-// Check if user liked a song
 export async function isSongLiked(songId, userId) {
-  try {
-    const res = await fetch(`${API_URL}/song/${songId}/user/${userId}`, {
-      headers: createHeaders(false),
-    });
-    
-    if (!res.ok) {
-      return false;
-    }
-    
-    const data = await res.json();
-    return data.liked || false;
-  } catch (error) {
-    console.error("Error checking if song is liked:", error);
-    return false;
-  }
+  return isItemLiked(songId, ITEM_TYPES.SONG);
 }

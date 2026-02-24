@@ -1,5 +1,5 @@
 server:
-  port: ${SERVER_PORT:8089}
+  port: ${SERVER_PORT:8101}
 
 spring:
   application:
@@ -8,8 +8,8 @@ spring:
   # Redis Configuration
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+      host: ${REDIS_HOST:redis-12345.c123.us-east-1-1.ec2.cloud.redislabs.com}
+      port: ${REDIS_PORT:12345}
       password: ${REDIS_PASSWORD:}
       database: 0
       timeout: 2000ms
@@ -23,8 +23,8 @@ spring:
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USERNAME:guest}
-    password: ${RABBITMQ_PASSWORD:guest}
+    username: ${RABBITMQ_USERNAME:admin}
+    password: ${RABBITMQ_PASSWORD:admin123}
     virtual-host: ${RABBITMQ_VHOST:/}
     listener:
       simple:

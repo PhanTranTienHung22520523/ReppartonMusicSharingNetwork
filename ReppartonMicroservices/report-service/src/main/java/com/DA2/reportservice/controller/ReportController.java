@@ -8,6 +8,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -62,10 +64,43 @@ public class ReportController {
     @GetMapping
     public ResponseEntity<?> getAllReports(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(name = "status", required = false) String status) {
         try {
             Pageable pageable = PageRequest.of(page, size);
-            Page<Report> reports = reportService.getAllReports(pageable);
+            Page<Report> reports;
+            if (status != null && !status.isBlank()) {
+                // allow status filter via query param for admin UI convenience
+                reports = reportService.getReportsByStatus(status.toLowerCase(), pageable);
+            } else {
+                reports = reportService.getAllReports(pageable);
+            }
+            return ResponseEntity.ok(reports);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // Get current user id from security context or X-User-Id header
+    private String getCurrentUserIdFromContextOrHeader() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.getPrincipal() instanceof String) {
+                return (String) authentication.getPrincipal();
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    // Get current user's reports
+    @GetMapping("/my-reports")
+    public ResponseEntity<?> getMyReports(@RequestHeader(name = "X-User-Id", required = false) String headerUserId) {
+        try {
+            String userId = headerUserId != null ? headerUserId : getCurrentUserIdFromContextOrHeader();
+            if (userId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "User not authenticated"));
+            }
+            List<Report> reports = reportService.getReportsByReporter(userId);
             return ResponseEntity.ok(reports);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

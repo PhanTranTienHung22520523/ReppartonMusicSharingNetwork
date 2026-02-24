@@ -50,9 +50,9 @@ export default function CreatePlaylistModal({ show, onClose, onPlaylistCreated }
   if (!show) return null;
 
   return (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
       <div className="modal-dialog modal-dialog-centered">
-        <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '20px' }}>
+        <div className="modal-content glass-modal border-0" style={{ borderRadius: 'var(--border-radius-xl)', boxShadow: 'var(--shadow-2xl)' }}>
           <div className="modal-header border-0 pb-0">
             <h5 className="modal-title d-flex align-items-center">
               <FaMusic className="me-2 text-primary" />

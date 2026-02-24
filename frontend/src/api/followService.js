@@ -1,130 +1,83 @@
-import { API_ENDPOINTS, getAuthToken, createHeaders } from '../config/api.config';
+import { API_ENDPOINTS, createHeaders } from '../config/api.config';
 
-const API_URL = API_ENDPOINTS.follows;
+const SOCIAL_API_URL = API_ENDPOINTS.social;
+const FOLLOW_ENDPOINT = `${SOCIAL_API_URL}/follow`;
 
-// Follow a user
-export async function followUser(followingId) {
-  try {
-    const res = await fetch(`${API_URL}/${followingId}`, {
-      method: "POST",
-      headers: createHeaders(true),
-    });
-    
+const buildQueryString = (params = {}) => new URLSearchParams(params).toString();
+
+export async function followUser(followerId, followingId) {
+  const res = await fetch(FOLLOW_ENDPOINT, {
+    method: "POST",
+    headers: createHeaders(true),
+    body: JSON.stringify({ followerId, followingId }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to follow user");
+  }
+  return data;
+}
+
+export async function unfollowUser(followerId, followingId) {
+  const params = buildQueryString({ followerId, followingId });
+  const res = await fetch(`${FOLLOW_ENDPOINT}?${params}`, {
+    method: "DELETE",
+    headers: createHeaders(true),
+  });
+  if (!res.ok) {
     const data = await res.json();
-    
-    if (!res.ok) {
-      throw new Error(data.message || "Failed to follow user");
-    }
-    
-    return data;
-  } catch (error) {
-    throw new Error(error.message || "Network error");
+    throw new Error(data.message || "Failed to unfollow user");
   }
+  return { success: true };
 }
 
-// Unfollow a user
-export async function unfollowUser(followingId) {
-  try {
-    const res = await fetch(`${API_URL}/${followingId}`, {
-      method: "DELETE",
-      headers: createHeaders(true),
-    });
-    
-    const data = await res.json();
-    
-    if (!res.ok) {
-      throw new Error(data.message || "Failed to unfollow user");
-    }
-    
-    return data;
-  } catch (error) {
-    throw new Error(error.message || "Network error");
+export async function getFollowers(userId) {
+  const res = await fetch(`${SOCIAL_API_URL}/followers/${userId}`, {
+    // followers endpoint is public GET — avoid sending Authorization to prevent invalid-token 403
+    headers: createHeaders(false),
+  });
+  if (!res.ok) {
+    throw new Error("Failed to fetch followers");
   }
+  return await res.json();
 }
 
-// Get followers of a user
-export async function getFollowers(userId, page = 0, size = 20) {
-  try {
-    const res = await fetch(`${API_URL}/followers/${userId}?page=${page}&size=${size}`, {
-      headers: createHeaders(false),
-    });
-    
-    if (!res.ok) {
-      throw new Error("Failed to fetch followers");
-    }
-    
-    return await res.json();
-  } catch (error) {
-    throw new Error(error.message || "Network error");
+export async function getFollowing(userId) {
+  const res = await fetch(`${SOCIAL_API_URL}/following/${userId}`, {
+    // following endpoint is public GET — avoid sending Authorization to prevent invalid-token 403
+    headers: createHeaders(false),
+  });
+  if (!res.ok) {
+    throw new Error("Failed to fetch following list");
   }
+  return await res.json();
 }
 
-// Get following of a user
-export async function getFollowing(userId, page = 0, size = 20) {
-  try {
-    const res = await fetch(`${API_URL}/following/${userId}?page=${page}&size=${size}`, {
-      headers: createHeaders(false),
-    });
-    
-    if (!res.ok) {
-      throw new Error("Failed to fetch following");
-    }
-    
-    return await res.json();
-  } catch (error) {
-    throw new Error(error.message || "Network error");
+export async function isFollowing(followerId, followingId) {
+  const params = buildQueryString({ followerId, followingId });
+  const res = await fetch(`${SOCIAL_API_URL}/is-following?${params}`, {
+    // is-following is a public GET (gateway allows it) — don't attach Authorization here
+    headers: createHeaders(false),
+  });
+  if (!res.ok) {
+    return { isFollowing: false };
   }
+  const data = await res.json();
+  return { isFollowing: Boolean(data.following) };
 }
 
-// Check if user is following another user
-export async function isFollowing(followingId) {
-  try {
-    const res = await fetch(`${API_URL}/${followingId}/check`, {
-      headers: createHeaders(true),
-    });
-    
-    if (!res.ok) {
-      return false;
-    }
-    
-    const data = await res.json();
-    return data.isFollowing || false;
-  } catch (error) {
-    console.error("Error checking follow status:", error);
-    return false;
-  }
-}
-
-// Get follow stats for a user
 export async function getFollowStats(userId) {
-  try {
-    const res = await fetch(`${API_URL}/stats/${userId}`, {
-      headers: createHeaders(false),
-    });
-    
-    if (!res.ok) {
-      throw new Error("Failed to fetch follow stats");
-    }
-    
-    return await res.json();
-  } catch (error) {
-    throw new Error(error.message || "Network error");
+  const res = await fetch(`${SOCIAL_API_URL}/stats/${userId}`, {
+    // stats is public GET — avoid sending Authorization header
+    headers: createHeaders(false),
+  });
+  if (!res.ok) {
+    throw new Error("Failed to fetch follow stats");
   }
+  return await res.json();
 }
 
-// Get suggested users to follow
-export async function getSuggestedUsers(page = 0, size = 10) {
-  try {
-    const res = await fetch(`${API_URL}/suggestions?page=${page}&size=${size}`, {
-      headers: createHeaders(true),
-    });
-    
-    if (!res.ok) {
-      throw new Error("Failed to fetch suggestions");
-    }
-    
-    return await res.json();
-  } catch (error) {
-    throw new Error(error.message || "Network error");
-  }
+export async function getSuggestedUsers() {
+  console.warn('Suggestions endpoint is not supported by the current backend. Returning empty list.');
+  return [];
 }

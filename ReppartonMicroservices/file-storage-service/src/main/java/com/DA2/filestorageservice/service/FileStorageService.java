@@ -42,6 +42,14 @@ public class FileStorageService {
 
     // Upload audio file
     public String uploadAudio(MultipartFile file) throws IOException {
+        return String.valueOf(uploadAudioWithMetadata(file).get("url"));
+    }
+
+    /**
+     * Upload audio file and return metadata such as duration.
+     * Cloudinary represents audio assets as resource_type=video.
+     */
+    public Map<String, Object> uploadAudioWithMetadata(MultipartFile file) throws IOException {
         if (file.isEmpty()) {
             throw new RuntimeException("File is empty");
         }
@@ -52,16 +60,25 @@ public class FileStorageService {
             throw new RuntimeException("File must be an audio file");
         }
 
+        String publicId = UUID.randomUUID().toString();
+
         // Upload to Cloudinary
         Map uploadResult = cloudinary.uploader().upload(file.getBytes(),
             ObjectUtils.asMap(
                 "folder", "repparton/audio",
                 "resource_type", "video", // Cloudinary uses "video" for audio files
-                "public_id", UUID.randomUUID().toString()
+                "public_id", publicId
             )
         );
 
-        return uploadResult.get("secure_url").toString();
+        Object url = uploadResult.get("secure_url");
+        Object duration = uploadResult.get("duration");
+
+        return ObjectUtils.asMap(
+                "url", url == null ? null : url.toString(),
+                "duration", duration,
+                "publicId", uploadResult.getOrDefault("public_id", publicId)
+        );
     }
 
     // Upload video file

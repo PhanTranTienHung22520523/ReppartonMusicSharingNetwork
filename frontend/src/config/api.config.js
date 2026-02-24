@@ -9,6 +9,7 @@ export const API_ENDPOINTS = {
   // User Service (port 8081)
   users: `${API_BASE_URL}/users`,
   auth: `${API_BASE_URL}/auth`,
+  devices: `${API_BASE_URL}/devices`,
   
   // Song Service (port 8082)
   songs: `${API_BASE_URL}/songs`,
@@ -16,9 +17,6 @@ export const API_ENDPOINTS = {
   
   // Social Service (port 8083)
   social: `${API_BASE_URL}/social`,
-  follows: `${API_BASE_URL}/social/follows`,
-  likes: `${API_BASE_URL}/social/likes`,
-  shares: `${API_BASE_URL}/social/shares`,
   
   // Playlist Service (port 8084)
   playlists: `${API_BASE_URL}/playlists`,
@@ -31,6 +29,12 @@ export const API_ENDPOINTS = {
   
   // Message Service (port 8087)
   messages: `${API_BASE_URL}/messages`,
+
+  // Group Conversations (Message Service)
+  groups: `${API_BASE_URL}/groups`,
+
+  // Artist Groups (Message Service)
+  artistGroups: `${API_BASE_URL}/artist-groups`,
   
   // Post Service (port 8088)
   posts: `${API_BASE_URL}/posts`,
@@ -62,8 +66,8 @@ export const API_ENDPOINTS = {
 
 // WebSocket endpoints
 export const WS_ENDPOINTS = {
-  notifications: `ws://localhost:8090/ws/notifications`,
-  messages: `ws://localhost:8090/ws/messages`
+  notifications: 'ws://localhost:8090/ws/notifications',
+  messages: 'ws://localhost:8090/ws/messages'
 };
 
 // Helper function to get auth token

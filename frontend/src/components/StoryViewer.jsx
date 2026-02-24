@@ -1,15 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
-import { FaChevronLeft, FaChevronRight, FaTimes, FaHeart, FaComment } from "react-icons/fa";
+import { createPortal } from "react-dom";
+import { FaTimes, FaHeart, FaComment } from "react-icons/fa";
 import { useAuth } from "../contexts/AuthContext";
 import UserAvatar from "./UserAvatar";
 
 export default function StoryViewer({ stories, initialIndex = 0, onClose }) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [progress, setProgress] = useState(0);
-  useAuth();
+  const { user: authUser } = useAuth();
   
   const currentStory = stories[currentIndex];
-  const duration = 5000; // 5 seconds per story
+  const duration = currentStory?.type === 'video' ? 15000 : 5000; // give videos more time
 
   useEffect(() => {
     if (!currentStory) return;
@@ -33,41 +34,55 @@ export default function StoryViewer({ stories, initialIndex = 0, onClose }) {
     return () => clearInterval(interval);
   }, [currentIndex, currentStory, stories.length, onClose]);
 
-  const goToPrevious = useCallback(() => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-    }
-  }, [currentIndex]);
-
-  const goToNext = useCallback(() => {
-    if (currentIndex < stories.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-    } else {
-      onClose();
-    }
-  }, [currentIndex, stories.length, onClose]);
-
   useEffect(() => {
     const handleKeyPress = (e) => {
-      if (e.key === 'ArrowLeft') goToPrevious();
-      if (e.key === 'ArrowRight') goToNext();
       if (e.key === 'Escape') onClose();
     };
 
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [currentIndex, stories.length, onClose, goToPrevious, goToNext]);
+  }, [onClose]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
 
   if (!currentStory) return null;
 
-  console.log("Current story data:", currentStory); // Debug log
+  const mediaUrl = currentStory.imageUrl;
+  const isVideo =
+    currentStory.type === 'video' ||
+    (typeof mediaUrl === 'string' && /\.(mp4|webm|ogg)$/i.test(mediaUrl));
 
-  return (
-    <div 
-      className="story-viewer position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+  const isMine = Boolean(
+    authUser?.id &&
+      (String(currentStory?.author?.id || "") === String(authUser.id))
+  );
+  const storyAuthor = isMine
+    ? {
+        ...currentStory.author,
+        ...authUser,
+      }
+    : currentStory.author;
+  const displayName = isMine
+    ? "Tin của tôi"
+    : storyAuthor?.fullName || storyAuthor?.username || storyAuthor?.email || "Người dùng";
+
+  const viewer = (
+    <div
+      className="story-viewer d-flex align-items-center justify-content-center"
       style={{ 
-        backgroundColor: 'rgba(0, 0, 0, 0.9)', 
-        zIndex: 9999 
+        position: 'fixed',
+        inset: 0,
+        width: '100vw',
+        height: '100vh',
+        backgroundColor: 'rgba(0, 0, 0, 0.96)',
+        zIndex: 2147483647,
       }}
     >
       {/* Progress bars */}
@@ -97,11 +112,11 @@ export default function StoryViewer({ stories, initialIndex = 0, onClose }) {
         <div className="d-flex align-items-center justify-content-between text-white">
           <div className="d-flex align-items-center gap-3">
             <UserAvatar 
-              user={currentStory.author} 
+              user={storyAuthor} 
               size={40}
             />
             <div>
-              <h6 className="mb-0 fw-bold">{currentStory.author?.username}</h6>
+              <h6 className="mb-0 fw-bold">{displayName}</h6>
               <small className="text-white-50">
                 {new Date(currentStory.createdAt).toLocaleString()}
               </small>
@@ -116,69 +131,99 @@ export default function StoryViewer({ stories, initialIndex = 0, onClose }) {
         </div>
       </div>
 
-      {/* Navigation areas */}
-      <div 
-        className="position-absolute start-0 top-0 h-100 d-flex align-items-center justify-content-start"
-        style={{ width: '20%', cursor: 'pointer', zIndex: 10000 }}
-        onClick={goToPrevious}
-      >
-        {currentIndex > 0 && (
-          <FaChevronLeft className="text-white ms-3" size={24} />
-        )}
-      </div>
-
-      <div 
-        className="position-absolute end-0 top-0 h-100 d-flex align-items-center justify-content-end"
-        style={{ width: '20%', cursor: 'pointer', zIndex: 10000 }}
-        onClick={goToNext}
-      >
-        <FaChevronRight className="text-white me-3" size={24} />
-      </div>
-
       {/* Story content */}
-      <div className="story-content position-relative">
-        {currentStory.imageUrl && currentStory.imageUrl.trim() !== '' ? (
-          <div className="position-relative">
-            <img
-              src={currentStory.imageUrl}
-              alt="Story"
-              className="img-fluid"
-              style={{ 
-                maxHeight: '80vh', 
-                maxWidth: '80vw',
-                objectFit: 'contain'
-              }}
-            />
+      <div
+        className="story-content position-relative"
+        style={{
+          width: '100vw',
+          height: '100vh',
+          overflow: 'hidden',
+        }}
+      >
+        {mediaUrl && mediaUrl.trim() !== '' ? (
+          <div className="position-relative w-100 h-100">
+            {/* Blurred backdrop (only for images) */}
+            {!isVideo && (
+              <div
+                className="position-absolute top-0 start-0 w-100 h-100"
+                style={{
+                  backgroundImage: `url(${mediaUrl})`,
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundSize: 'cover',
+                  filter: 'blur(28px)',
+                  transform: 'scale(1.08)',
+                  opacity: 0.55,
+                }}
+              />
+            )}
+
+            {/* Foreground media (contain like FB/IG desktop) */}
+            <div
+              className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+              style={{ padding: '72px 16px 72px' }}
+            >
+              {isVideo ? (
+                <video
+                  src={mediaUrl}
+                  controls
+                  autoPlay
+                  muted
+                  playsInline
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    objectFit: 'contain',
+                    borderRadius: 'var(--border-radius-lg)',
+                    boxShadow: 'var(--shadow-2xl)',
+                    background: 'rgba(0,0,0,0.25)',
+                  }}
+                />
+              ) : (
+                <img
+                  src={mediaUrl}
+                  alt="Story"
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    objectFit: 'contain',
+                    borderRadius: 'var(--border-radius-lg)',
+                    boxShadow: 'var(--shadow-2xl)',
+                    background: 'rgba(0,0,0,0.25)',
+                  }}
+                />
+              )}
+            </div>
+
             {/* Content overlay for image stories */}
             {currentStory.content && (
               <div 
                 className="position-absolute bottom-0 start-0 w-100 p-4"
                 style={{ 
-                  background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',
-                  color: 'white'
+                  background: 'linear-gradient(transparent, rgba(0,0,0,0.85))',
+                  color: 'white',
+                  zIndex: 2,
                 }}
               >
-                <p className="mb-0 fs-5">{currentStory.content}</p>
+                <div className="mx-auto" style={{ maxWidth: 720 }}>
+                  <p className="mb-0 fs-5 fw-semibold">{currentStory.content}</p>
+                </div>
               </div>
             )}
           </div>
         ) : (
           <div 
-            className="d-flex align-items-center justify-content-center text-white"
+            className="d-flex align-items-center justify-content-center text-white w-100 h-100"
             style={{ 
-              width: '80vw',
-              height: '80vh',
-              maxWidth: 400,
-              maxHeight: 600,
-              background: 'linear-gradient(45deg, #667eea 0%, #764ba2 100%)',
-              borderRadius: '12px'
+              background: 'var(--gradient-primary)',
             }}
           >
             <div className="text-center p-4">
-              <h4 className="fw-bold mb-3">{currentStory.content || 'No content'}</h4>
-              <small className="text-white-50">
-                {currentStory.author?.username}
-              </small>
+              <div className="d-flex justify-content-center mb-3">
+                <UserAvatar user={storyAuthor} size={56} />
+              </div>
+              <h4 className="fw-bold mb-2">{currentStory.content || 'No content'}</h4>
+              <small className="text-white-50">{displayName}</small>
             </div>
           </div>
         )}
@@ -197,4 +242,7 @@ export default function StoryViewer({ stories, initialIndex = 0, onClose }) {
       </div>
     </div>
   );
+
+  if (typeof document === "undefined") return viewer;
+  return createPortal(viewer, document.body);
 }

@@ -1,74 +1,36 @@
 import { useAuth } from "../contexts/AuthContext";
 import MainLayout from "../components/MainLayout";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import LoginRequireModal from "../components/LoginRequireModal";
-import { FaMusic, FaImage, FaCameraRetro } from "react-icons/fa";
-
-// API lấy genre
-async function getAllGenres() {
-  const res = await fetch("http://localhost:8080/api/genres");
-  if (!res.ok) throw new Error("Lỗi lấy genre");
-  return res.json();
-}
-// API upload bài hát
-async function uploadSong(formData, token) {
-  const res = await fetch("http://localhost:8080/api/songs/upload", {
-    method: "POST",
-    headers: {
-      ...(token && { Authorization: `Bearer ${token}` }),
-    },
-    body: formData,
-  });
-  if (!res.ok) throw new Error("Lỗi upload bài hát");
-  return res.json();
-}
-
-// API upload post
-async function uploadPost(postData, token) {
-  const formData = new FormData();
-  formData.append("content", postData.content);
-  if (postData.image) formData.append("mediaFile", postData.image);
-  
-  const res = await fetch("http://localhost:8080/api/posts", {
-    method: "POST",
-    headers: {
-      ...(token && { Authorization: `Bearer ${token}` }),
-    },
-    body: formData,
-  });
-  if (!res.ok) throw new Error("Lỗi upload post");
-  return res.json();
-}
-
-// API upload story
-async function uploadStory(storyData, token) {
-  const formData = new FormData();
-  formData.append("type", "image");
-  if (storyData.content) formData.append("textContent", storyData.content);
-  if (storyData.image) formData.append("contentFile", storyData.image);
-  formData.append("isPrivate", false);
-  
-  const res = await fetch("http://localhost:8080/api/stories/create-auth", {
-    method: "POST",
-    headers: {
-      ...(token && { Authorization: `Bearer ${token}` }),
-    },
-    body: formData,
-  });
-  if (!res.ok) throw new Error("Lỗi upload story");
-  return res.json();
-}
+import SongAIAnalysis from "../components/SongAIAnalysis";
+import { analyzeSong, analyzeChords, getAIAnalysis, getChordAnalysis } from "../api/aiService";
+import { uploadSong, searchSongs, updateSongLyrics } from "../api/songService";
+import { createPost } from "../api/postService";
+import { createStory } from "../api/storyService";
+import { getAllGenres } from "../api/genreService";
+import { cancelArtistApplication, getCurrentUser } from "../api/auth";
+import { FaMusic, FaImage, FaCameraRetro, FaBrain, FaCheckCircle, FaSearch, FaTimes } from "react-icons/fa";
 
 export default function Upload() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
+  const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [activeTab, setActiveTab] = useState("music");
   const [genres, setGenres] = useState([]);
+
+  const isArtist = Boolean(user && (user.roles?.includes("ARTIST") || user.role === "ARTIST"));
+  const isArtistPending = Boolean(user?.isArtistPending || user?.artistVerification?.status === "pending");
+  const artistStatus = user?.artistVerification?.status;
+  const isArtistRejected = artistStatus === "rejected";
+  const isArtistApproved = artistStatus === "approved";
+  const rejectionReason = user?.artistVerification?.rejectionReason;
   
   // Song upload state
   const [song, setSong] = useState({
     title: "",
     description: "",
+    lyrics: "",
     file: null,
     coverImage: null,
     genreIds: [],
@@ -80,6 +42,12 @@ export default function Upload() {
     image: null,
     isPrivate: false,
   });
+
+  // Song search state for posts
+  const [songSearchQuery, setSongSearchQuery] = useState("");
+  const [songSearchResults, setSongSearchResults] = useState([]);
+  const [selectedSong, setSelectedSong] = useState(null);
+  const [searchingSongs, setSearchingSongs] = useState(false);
   
   // Story upload state
   const [story, setStory] = useState({
@@ -90,12 +58,121 @@ export default function Upload() {
   
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
+  const [uploadedSongId, setUploadedSongId] = useState(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState(null);
+  const [chordAnalysis, setChordAnalysis] = useState(null);
+  const [cancellingArtist, setCancellingArtist] = useState(false);
+  const [refreshingArtistStatus, setRefreshingArtistStatus] = useState(false);
+  const [artistStatusFlash, setArtistStatusFlash] = useState(null);
+  const [lastArtistStatus, setLastArtistStatus] = useState(null);
+
+  const handleCancelArtistApplication = async () => {
+    if (!window.confirm("Bạn có chắc muốn hủy đăng ký nghệ sĩ không?")) return;
+    setCancellingArtist(true);
+    try {
+      const updated = await cancelArtistApplication();
+      updateUser(updated);
+      alert("Đã hủy đăng ký nghệ sĩ.");
+    } catch (e) {
+      alert(e?.message || "Hủy đăng ký thất bại");
+    } finally {
+      setCancellingArtist(false);
+    }
+  };
+
+  const refreshArtistStatus = async () => {
+    if (!user?.id) return;
+    setRefreshingArtistStatus(true);
+    try {
+      const fresh = await getCurrentUser();
+      if (fresh) {
+        updateUser(fresh);
+      }
+    } finally {
+      setRefreshingArtistStatus(false);
+    }
+  };
+
+  // Best-effort refresh to avoid stale localStorage (so pending/cancel shows)
+  useEffect(() => {
+    if (!user?.id) return;
+    refreshArtistStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  // Poll while pending to surface approve/reject without relog
+  useEffect(() => {
+    if (!user?.id) return;
+    if (artistStatus !== "pending") return;
+    const t = setInterval(() => {
+      refreshArtistStatus();
+    }, 15000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, artistStatus]);
+
+  // One-time flash notice when status transitions
+  useEffect(() => {
+    if (!user?.id) {
+      setLastArtistStatus(null);
+      return;
+    }
+
+    if (lastArtistStatus === "pending" && artistStatus === "approved") {
+      setArtistStatusFlash({ type: "success", message: "Chúc mừng! Đơn đăng ký nghệ sĩ đã được duyệt." });
+    } else if (lastArtistStatus === "pending" && artistStatus === "rejected") {
+      setArtistStatusFlash({ type: "danger", message: "Đơn đăng ký nghệ sĩ đã bị từ chối." });
+    }
+
+    setLastArtistStatus(artistStatus || null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [artistStatus, user?.id]);
+
+  useEffect(() => {
+    if (!artistStatusFlash) return;
+    const t = setTimeout(() => setArtistStatusFlash(null), 8000);
+    return () => clearTimeout(t);
+  }, [artistStatusFlash]);
+
+  const handleSongSearch = async (e) => {
+    const query = e.target.value;
+    setSongSearchQuery(query);
+    if (query.length > 2) {
+      setSearchingSongs(true);
+      try {
+        const results = await searchSongs(query);
+        // Handle different response formats
+        const songs = results.data || results || [];
+        setSongSearchResults(Array.isArray(songs) ? songs : []);
+      } catch (err) {
+        console.error(err);
+        setSongSearchResults([]);
+      } finally {
+        setSearchingSongs(false);
+      }
+    } else {
+      setSongSearchResults([]);
+    }
+  };
+
+  const selectSong = (song) => {
+    setSelectedSong(song);
+    setSongSearchQuery("");
+    setSongSearchResults([]);
+  };
 
   useEffect(() => {
     getAllGenres()
-      .then(setGenres)
+      .then((data) => setGenres(Array.isArray(data) ? data : (data?.data && Array.isArray(data.data) ? data.data : [])))
       .catch(() => setGenres([]));
   }, []);
+
+  useEffect(() => {
+    if (user && !isArtist && activeTab === "music") {
+      setActiveTab("post");
+    }
+  }, [user, isArtist, activeTab]);
 
   const handleSongChange = e => {
     const { name, value, files, options } = e.target;
@@ -127,31 +204,88 @@ export default function Upload() {
       return;
     }
     
-    console.log("User data:", user); // Debug log
-    console.log("User role:", user.role); // Debug log
+    console.log("User data:", user);
     
     setLoading(true);
     setSuccess("");
+    
     try {
       const formData = new FormData();
       formData.append("title", song.title);
-      formData.append("artistId", user.id || user.email || user.username); // Backend expects artistId
-      if (song.file) formData.append("audioFile", song.file); // Backend expects "audioFile" 
+      formData.append("artistId", user.id || user.email || user.username);
+      if (song.description) formData.append("description", song.description);
+
+      // Send genre names (song-service stores genres as strings)
+      const selectedGenreNames = (song.genreIds || [])
+        .map((id) => genres.find((g) => g.id === id)?.name)
+        .filter(Boolean);
+      selectedGenreNames.forEach((name) => formData.append("genres", name));
+
+      if (song.lyrics && song.lyrics.trim()) formData.append("lyrics", song.lyrics.trim());
+      if (song.file) formData.append("audioFile", song.file);
       if (song.coverImage) formData.append("coverFile", song.coverImage);
-      // Convert array to comma-separated string
-      formData.append("genreIds", (song.genreIds || []).join(","));
-      formData.append("isPrivate", "false");
+      
+      // Gọi API một lần duy nhất
+      const result = await uploadSong(formData, user.token);
 
-      console.log("Sending formData with token:", user.token); // Debug log
-
-      await uploadSong(formData, user.token);
+      const createdSong = result?.data ?? result;
+      const createdSongId = createdSong?.id ?? createdSong?._id ?? null;
+      // Keep the freshly created song object in state so posts can attach it for nicer display
+      if (createdSong) setSelectedSong(createdSong);
+      // Ensure lyrics get persisted even if the upload endpoint ignores it.
+      if (createdSongId && song.lyrics && song.lyrics.trim()) {
+        try {
+          await updateSongLyrics(createdSongId, song.lyrics.trim());
+        } catch (err) {
+          console.error("Update lyrics failed:", err);
+        }
+      }
+      
       setSuccess("Upload bài hát thành công!");
-      setSong({ title: "", description: "", file: null, coverImage: null, genreIds: [] });
+      setUploadedSongId(createdSongId ?? result?.id);
+      // Reset form
+      setSong({ title: "", description: "", lyrics: "", file: null, coverImage: null, genreIds: [] });
+      // Redirect to home after successful upload
+      navigate('/');
+      
     } catch (error) {
-      console.error("Upload error:", error); // Debug log
+      console.error("Upload error:", error);
       setSuccess("Upload bài hát thất bại: " + error.message);
+    } finally {
+      // Luôn tắt loading dù thành công hay thất bại
+      setLoading(false);
     }
-    setLoading(false);
+  };
+
+  const handleAnalyzeSong = async () => {
+    if (!uploadedSongId) return;
+    
+    setAnalyzing(true);
+    try {
+      const response = await analyzeSong(uploadedSongId);
+
+      if (response?.success) {
+        const analysisResponse = await getAIAnalysis(uploadedSongId);
+        setAiAnalysis(analysisResponse?.data);
+
+        // Trigger chord analysis best-effort, then fetch result
+        try {
+          await analyzeChords(uploadedSongId);
+          const chordsResponse = await getChordAnalysis(uploadedSongId);
+          setChordAnalysis(chordsResponse?.data);
+        } catch (err) {
+          console.log("Chord analysis not available:", err);
+        }
+
+        setSuccess("Phân tích AI hoàn tất!");
+      } else {
+        setSuccess("Phân tích AI thất bại: " + (response?.message || "Unknown error"));
+      }
+    } catch (error) {
+      console.error("AI Analysis error:", error);
+      setSuccess("Phân tích AI thất bại: " + error.message);
+    }
+    setAnalyzing(false);
   };
 
   const handlePostSubmit = async e => {
@@ -163,14 +297,20 @@ export default function Upload() {
     setLoading(true);
     setSuccess("");
     try {
-      await uploadPost(post, user.token);
+      await createPost(post.content, post.image, selectedSong?.id || selectedSong?._id);
       setSuccess("Đăng bài thành công!");
       setPost({ content: "", image: null, isPrivate: false });
-    } catch {
-      setSuccess("Đăng bài thất bại!");
+      setSelectedSong(null);
+        // Redirect to home after creating post
+        navigate('/');
+    } catch (error) {
+      console.error("Post upload error:", error);
+      setSuccess("Đăng bài thất bại: " + error.message);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
+ 
 
   const handleStorySubmit = async e => {
     e.preventDefault();
@@ -181,11 +321,19 @@ export default function Upload() {
     setLoading(true);
     setSuccess("");
     try {
-      await uploadStory(story, user.token);
+      await createStory({
+        content: story.content,
+        image: story.image,
+        type: "image",
+        isPrivate: false
+      });
       setSuccess("Đăng story thành công!");
       setStory({ content: "", image: null, duration: 24 });
-    } catch {
-      setSuccess("Đăng story thất bại!");
+        // Redirect to home after story upload
+        navigate('/');
+    } catch (error) {
+      console.error("Story upload error:", error);
+      setSuccess("Đăng story thất bại: " + error.message);
     }
     setLoading(false);
   };
@@ -197,6 +345,84 @@ export default function Upload() {
           <FaCameraRetro className="me-2" />
           Upload Content
         </h3>
+
+        {artistStatusFlash ? (
+          <div className={`alert alert-${artistStatusFlash.type} d-flex align-items-center justify-content-between`}>
+            <div className="fw-bold">{artistStatusFlash.message}</div>
+            <button type="button" className="btn btn-sm btn-light" onClick={() => setArtistStatusFlash(null)}>
+              Đóng
+            </button>
+          </div>
+        ) : null}
+
+        {user && !isArtist && (
+          <div className={`alert ${isArtistPending ? "alert-warning" : isArtistRejected ? "alert-danger" : isArtistApproved ? "alert-success" : "alert-info"} d-flex align-items-center justify-content-between`}>
+            <div>
+              <div className="fw-bold">
+                {isArtistPending
+                  ? "Đang chờ duyệt"
+                  : isArtistRejected
+                    ? "Đơn nghệ sĩ bị từ chối"
+                    : isArtistApproved
+                      ? "Đơn nghệ sĩ đã được duyệt"
+                      : "Chỉ Nghệ sĩ mới có thể Upload Music"}
+              </div>
+              <div className="small">
+                {isArtistPending
+                  ? "Hồ sơ đăng ký nghệ sĩ của bạn đang được xét duyệt. Bạn có thể hủy đăng ký nếu muốn."
+                  : isArtistRejected
+                    ? "Bạn có thể xem lý do từ chối bên dưới và đăng ký lại sau khi cập nhật hồ sơ."
+                    : isArtistApproved
+                      ? "Nếu bạn chưa thấy quyền nghệ sĩ, hãy bấm Làm mới trạng thái hoặc đăng xuất/đăng nhập lại."
+                      : "Bạn có thể đăng ký làm nghệ sĩ để upload bài hát."}
+
+                {isArtistRejected && rejectionReason ? (
+                  <div className="mt-2">
+                    <div className="fw-bold">Lý do từ chối (nếu có)</div>
+                    <textarea
+                      className="form-control mt-1"
+                      rows={2}
+                      value={rejectionReason}
+                      readOnly
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </div>
+            <div className="d-flex gap-2 flex-wrap">
+              {(isArtistPending || isArtistApproved || isArtistRejected) ? (
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary"
+                  onClick={refreshArtistStatus}
+                  disabled={refreshingArtistStatus}
+                  title="Cập nhật trạng thái từ server"
+                >
+                  {refreshingArtistStatus ? "Đang làm mới..." : "Làm mới"}
+                </button>
+              ) : null}
+
+              {isArtistPending ? (
+                <button
+                  type="button"
+                  className="btn btn-outline-danger"
+                  onClick={handleCancelArtistApplication}
+                  disabled={cancellingArtist}
+                >
+                  {cancellingArtist ? "Đang hủy..." : "Hủy đăng ký"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => navigate("/apply-artist")}
+                >
+                  Đăng ký Nghệ sĩ
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         
         {/* Tabs */}
         <div className="card border-0 shadow-sm">
@@ -204,8 +430,12 @@ export default function Upload() {
             <ul className="nav nav-tabs card-header-tabs">
               <li className="nav-item">
                 <button 
-                  className={`nav-link ${activeTab === 'music' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('music')}
+                  className={`nav-link ${activeTab === 'music' ? 'active' : ''} ${!isArtist ? 'disabled' : ''}`}
+                  onClick={() => {
+                    if (!isArtist) return;
+                    setActiveTab('music');
+                  }}
+                  disabled={!isArtist}
                 >
                   <FaMusic className="me-2" />
                   Upload Music
@@ -261,6 +491,19 @@ export default function Upload() {
                         placeholder="Mô tả về bài hát..."
                       />
                     </div>
+
+                    <div className="mb-3">
+                      <label className="form-label fw-semibold">Lyrics</label>
+                      <textarea
+                        className="form-control"
+                        name="lyrics"
+                        value={song.lyrics}
+                        onChange={handleSongChange}
+                        rows="6"
+                        placeholder="Nhập lời bài hát..."
+                      />
+                      <div className="form-text">Có thể để trống. Nếu có, hệ thống sẽ tự tạo lời đồng bộ (synced lyrics).</div>
+                    </div>
                     
                     <div className="mb-3">
                       <label className="form-label fw-semibold">Thể loại</label>
@@ -307,6 +550,7 @@ export default function Upload() {
                     
                     {success && (
                       <div className={`alert ${success.includes("thành công") ? "alert-success" : "alert-danger"} mb-3`}>
+                        <FaCheckCircle className="me-2" />
                         {success}
                       </div>
                     )}
@@ -328,7 +572,36 @@ export default function Upload() {
                         </>
                       )}
                     </button>
+                    
+                    {/* AI Analysis Button */}
+                    {uploadedSongId && (
+                      <button 
+                        className="btn btn-outline-primary btn-lg w-100 mt-3" 
+                        type="button"
+                        onClick={handleAnalyzeSong}
+                        disabled={analyzing}
+                      >
+                        {analyzing ? (
+                          <>
+                            <span className="spinner-border spinner-border-sm me-2"></span>
+                            Đang phân tích...
+                          </>
+                        ) : (
+                          <>
+                            <FaBrain className="me-2" />
+                            Phân tích bằng AI
+                          </>
+                        )}
+                      </button>
+                    )}
                   </form>
+                  
+                  {/* AI Analysis Results */}
+                  {aiAnalysis && (
+                    <div className="mt-4">
+                      <SongAIAnalysis analysis={aiAnalysis} chordAnalysis={chordAnalysis} />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -361,6 +634,67 @@ export default function Upload() {
                         onChange={handlePostChange}
                       />
                       <div className="form-text">JPG, PNG, GIF (tối đa 10MB)</div>
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label fw-semibold">Đính kèm bài hát (tùy chọn)</label>
+                      {selectedSong ? (
+                        <div className="d-flex align-items-center p-2 border rounded bg-light">
+                          <div className="me-3">
+                            <FaMusic className="text-primary" size={24} />
+                          </div>
+                          <div className="flex-grow-1">
+                            <div className="fw-bold">{selectedSong.title}</div>
+                            <div className="text-muted small">{selectedSong.artist?.name || "Unknown Artist"}</div>
+                          </div>
+                          <button 
+                            type="button" 
+                            className="btn btn-link text-danger p-0"
+                            onClick={() => setSelectedSong(null)}
+                          >
+                            <FaTimes />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="position-relative">
+                          <div className="input-group">
+                            <span className="input-group-text bg-white">
+                              <FaSearch className="text-muted" />
+                            </span>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="Tìm kiếm bài hát..."
+                              value={songSearchQuery}
+                              onChange={handleSongSearch}
+                            />
+                          </div>
+                          
+                          {/* Search Results Dropdown */}
+                          {(searchingSongs || songSearchResults.length > 0) && (
+                            <div className="position-absolute w-100 mt-1 bg-white border rounded shadow-sm" style={{ zIndex: 1000, maxHeight: "200px", overflowY: "auto" }}>
+                              {searchingSongs && (
+                                <div className="p-2 text-center text-muted">
+                                  <span className="spinner-border spinner-border-sm me-2"></span>
+                                  Đang tìm kiếm...
+                                </div>
+                              )}
+                              
+                              {!searchingSongs && songSearchResults.map(song => (
+                                <div 
+                                  key={song.id}
+                                  className="p-2 border-bottom cursor-pointer hover-bg-light"
+                                  style={{ cursor: "pointer" }}
+                                  onClick={() => selectSong(song)}
+                                >
+                                  <div className="fw-bold">{song.title}</div>
+                                  <div className="text-muted small">{song.artist?.name || "Unknown Artist"}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                     
                     <div className="mb-4">

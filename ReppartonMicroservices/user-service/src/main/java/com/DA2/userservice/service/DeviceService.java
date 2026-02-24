@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -32,8 +33,16 @@ public class DeviceService {
             device.setSessionId(sessionId);
             device.setUpdatedAt(LocalDateTime.now());
 
+            if (deviceName != null && !deviceName.isBlank() && !Objects.equals(deviceName, device.getDeviceName())) {
+                device.setDeviceName(deviceName);
+            }
+
+            if (userAgent != null && !userAgent.isBlank() && !Objects.equals(userAgent, device.getUserAgent())) {
+                device.setUserAgent(userAgent);
+            }
+
             // Update IP if changed
-            if (!ipAddress.equals(device.getIpAddress())) {
+            if (ipAddress != null && !ipAddress.isBlank() && !Objects.equals(ipAddress, device.getIpAddress())) {
                 device.setIpAddress(ipAddress);
                 // TODO: Update location based on new IP
             }
@@ -67,20 +76,31 @@ public class DeviceService {
      * Mark device as trusted
      */
     public void markDeviceAsTrusted(String userId, String deviceId) {
-        Optional<DeviceInfo> device = deviceInfoRepository.findByUserIdAndDeviceId(userId, deviceId);
-        if (device.isPresent()) {
-            DeviceInfo deviceInfo = device.get();
-            deviceInfo.setTrusted(true);
-            deviceInfo.setUpdatedAt(LocalDateTime.now());
-            deviceInfoRepository.save(deviceInfo);
-            log.info("Device {} marked as trusted for user {}", deviceId, userId);
+        Optional<DeviceInfo> device = deviceInfoRepository.findById(deviceId);
+        if (device.isEmpty()) {
+            device = deviceInfoRepository.findByUserIdAndDeviceId(userId, deviceId);
         }
+
+        device.filter(d -> Objects.equals(userId, d.getUserId()))
+                .ifPresent(d -> {
+                    d.setTrusted(true);
+                    d.setUpdatedAt(LocalDateTime.now());
+                    deviceInfoRepository.save(d);
+                    log.info("Device {} marked as trusted for user {}", deviceId, userId);
+                });
     }
 
     /**
      * Remove device (logout from all sessions)
      */
     public void removeDevice(String userId, String deviceId) {
+        Optional<DeviceInfo> device = deviceInfoRepository.findById(deviceId);
+        if (device.isPresent() && Objects.equals(userId, device.get().getUserId())) {
+            deviceInfoRepository.deleteById(deviceId);
+            log.info("Device {} removed for user {}", deviceId, userId);
+            return;
+        }
+
         deviceInfoRepository.deleteByUserIdAndDeviceId(userId, deviceId);
         log.info("Device {} removed for user {}", deviceId, userId);
     }
@@ -126,9 +146,15 @@ public class DeviceService {
 
         // TODO: Implement IP geolocation comparison
         // For now, just check if IP is different from trusted devices
+        String newIp = newDevice.getIpAddress();
+        if (newIp == null || newIp.isBlank()) {
+            return false;
+        }
         return existingDevices.stream()
                 .filter(DeviceInfo::isTrusted)
-                .noneMatch(device -> device.getIpAddress().equals(newDevice.getIpAddress()));
+            .map(DeviceInfo::getIpAddress)
+            .filter(ip -> ip != null && !ip.isBlank())
+            .noneMatch(ip -> Objects.equals(ip, newIp));
     }
 
     private boolean checkTimeAnomaly(DeviceInfo newDevice) {

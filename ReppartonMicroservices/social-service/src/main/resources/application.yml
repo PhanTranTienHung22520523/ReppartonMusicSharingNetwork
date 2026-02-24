@@ -4,7 +4,7 @@ spring:
   # MongoDB Configuration
   data:
     mongodb:
-      uri: ${MONGODB_URI}
+      uri: ${MONGODB_URI_SOCIAL:${MONGODB_URI:mongodb://localhost:27017/repparton_social}}
   # PostgreSQL for Analytics (optional)
   # datasource:
   #   url: ${POSTGRES_URL:jdbc:postgresql://localhost:5432/repparton_analytics}
@@ -21,6 +21,15 @@ spring:
 
 server:
   port: ${SERVER_PORT:8083}
+  error:
+    include-message: always
+    include-exception: true
+    include-stacktrace: on_param
+
+# User Service URL for fetching user details
+user:
+  service:
+    url: ${USER_SERVICE_URL:http://localhost:8081}
 
 eureka:
   client:

@@ -45,11 +45,13 @@ public class FileStorageController {
     @PostMapping("/upload/audio")
     public ResponseEntity<?> uploadAudio(@RequestParam("file") MultipartFile file) {
         try {
-            String url = fileStorageService.uploadAudio(file);
+            Map<String, Object> meta = fileStorageService.uploadAudioWithMetadata(file);
+            String url = meta.get("url") == null ? null : String.valueOf(meta.get("url"));
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "message", "Audio uploaded successfully",
                 "url", url,
+                "duration", meta.get("duration"),
                 "type", "audio"
             ));
         } catch (Exception e) {

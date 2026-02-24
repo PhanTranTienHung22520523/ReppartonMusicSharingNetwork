@@ -228,6 +228,20 @@ export default function Login() {
                   </button>
                 </form>
 
+                {/* Forgot Password Link */}
+                <div className="text-center mt-3">
+                  <Link 
+                    to="/forgot-password" 
+                    className="text-muted"
+                    style={{ 
+                      textDecoration: "none",
+                      fontSize: "14px"
+                    }}
+                  >
+                    Quên mật khẩu?
+                  </Link>
+                </div>
+
                 {/* Sign Up Link */}
                 <div className="text-center mt-4">
                   <p className="text-muted mb-0">

@@ -16,8 +16,8 @@ public class SearchHistoryController {
     private SearchHistoryService service;
 
     @PostMapping
-    public ResponseEntity<SearchHistory> addHistory(@RequestParam String userId, 
-                                                     @RequestParam String query) {
+    public ResponseEntity<SearchHistory> addHistory(@RequestParam("userId") String userId, 
+                                                     @RequestParam("query") String query) {
         try {
             SearchHistory history = service.addSearchHistory(userId, query);
             return ResponseEntity.ok(history);
@@ -27,7 +27,7 @@ public class SearchHistoryController {
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<SearchHistory>> getUserSearchHistory(@PathVariable String userId) {
+    public ResponseEntity<List<SearchHistory>> getUserSearchHistory(@PathVariable("userId") String userId) {
         try {
             return ResponseEntity.ok(service.getUserSearchHistory(userId));
         } catch (Exception e) {
@@ -36,7 +36,7 @@ public class SearchHistoryController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<SearchHistory>> searchByKeyword(@RequestParam String keyword) {
+    public ResponseEntity<List<SearchHistory>> searchByKeyword(@RequestParam("keyword") String keyword) {
         try {
             return ResponseEntity.ok(service.findByKeyword(keyword));
         } catch (Exception e) {

@@ -65,6 +65,49 @@ public class RecommendationController {
         }
     }
 
+    // Generic songs endpoint (alias for default/trending)
+    @GetMapping("/songs")
+    public ResponseEntity<?> getSongs(
+            @RequestParam(defaultValue = "20") int limit,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            // Try to get userId from JWT token if authenticated
+            String userId = null;
+            try {
+                org.springframework.security.core.Authentication authentication = 
+                    org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+                if (authentication != null && authentication.isAuthenticated() 
+                    && !"anonymousUser".equals(authentication.getPrincipal())) {
+                    userId = authentication.getName(); // This should be the userId from JWT
+                }
+            } catch (Exception e) {
+                // Not authenticated, use default recommendations
+            }
+            
+            Map<String, Object> result;
+            if (userId != null && !userId.isEmpty()) {
+                // Get personalized AI recommendations
+                result = recommendationService.getPersonalizedRecommendations(userId, limit);
+                // Extract songs array from result
+                if (result.containsKey("recommendations")) {
+                    return ResponseEntity.ok(result.get("recommendations"));
+                }
+            } else {
+                // Get default recommendations for non-authenticated users
+                result = recommendationService.getDefaultRecommendations(limit);
+                // Extract songs array from result
+                if (result.containsKey("songs")) {
+                    return ResponseEntity.ok(result.get("songs"));
+                }
+            }
+            
+            // Fallback: return empty array
+            return ResponseEntity.ok(java.util.Collections.emptyList());
+        } catch (Exception e) {
+            return ResponseEntity.ok(java.util.Collections.emptyList());
+        }
+    }
+
     // Get default recommendations (for new users)
     @GetMapping("/default")
     public ResponseEntity<?> getDefaultRecommendations(
@@ -134,6 +177,23 @@ public class RecommendationController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
                 "error", e.getMessage()
+            ));
+        }
+    }
+
+    // Explicitly refresh recommendations (triggered by analytics)
+    @PostMapping("/refresh/{userId}")
+    public ResponseEntity<?> refreshRecommendations(@PathVariable String userId) {
+        try {
+            recommendationService.refreshRecommendations(userId);
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Recommendation refresh triggered successfully"
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", e.getMessage()
             ));
         }
     }

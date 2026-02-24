@@ -1,5 +1,5 @@
 server:
-  port: 8094
+  port: ${SERVER_PORT:8093}
 
 spring:
   application:
@@ -7,6 +7,9 @@ spring:
   cloud:
     discovery:
       enabled: true
+  data:
+    mongodb:
+      uri: ${MONGODB_URI_RECOMMENDATIONS:${MONGODB_URI:mongodb://localhost:27017/repparton_recommendations}}
 
 eureka:
   client:

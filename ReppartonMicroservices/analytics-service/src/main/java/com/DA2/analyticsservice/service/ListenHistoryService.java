@@ -13,8 +13,8 @@ public class ListenHistoryService {
     @Autowired
     private ListenHistoryRepository repository;
 
-    public ListenHistory addListenHistory(String userId, String songId) {
-        ListenHistory history = new ListenHistory(userId, songId);
+    public ListenHistory addListenHistory(String userId, String songId, String artistId) {
+        ListenHistory history = new ListenHistory(userId, songId, artistId);
         return repository.save(history);
     }
 
@@ -35,6 +35,6 @@ public class ListenHistoryService {
     }
 
     public List<ListenHistory> getHistoryByDateRange(LocalDateTime start, LocalDateTime end) {
-        return repository.findByDateRange(start, end);
+        return repository.findByCreatedAtBetween(start, end);
     }
 }

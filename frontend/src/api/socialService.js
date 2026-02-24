@@ -1,7 +1,52 @@
-import { API_ENDPOINTS, getAuthToken, createHeaders } from '../config/api.config';
+import { API_ENDPOINTS, createHeaders } from '../config/api.config';
 
 // ========== POSTS API ==========
 const POSTS_API_URL = API_ENDPOINTS.posts;
+const SOCIAL_API_URL = API_ENDPOINTS.social;
+
+const getStoredUser = () => {
+  const stored = localStorage.getItem('user');
+  return stored ? JSON.parse(stored) : null;
+};
+
+const requireUserId = () => {
+  const user = getStoredUser();
+  if (!user?.id) {
+    throw new Error('User not authenticated');
+  }
+  return user.id;
+};
+
+const buildQueryString = (params = {}) => new URLSearchParams(params).toString();
+
+const ITEM_TYPES = {
+  POST: 'POST',
+  SONG: 'SONG',
+};
+
+export async function getLikesCount(itemId, itemType) {
+  const params = buildQueryString({ itemId, itemType });
+  const res = await fetch(`${SOCIAL_API_URL}/likes/count?${params}`, {
+    headers: createHeaders(false),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to fetch likes count');
+  }
+  const data = await res.json();
+  return typeof data?.count === 'number' ? data.count : 0;
+}
+
+export async function getSharesCount(itemId, itemType) {
+  const params = buildQueryString({ itemId, itemType });
+  const res = await fetch(`${SOCIAL_API_URL}/shares/count?${params}`, {
+    headers: createHeaders(false),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to fetch shares count');
+  }
+  const data = await res.json();
+  return typeof data?.count === 'number' ? data.count : 0;
+}
 
 // Get all posts
 export async function getAllPosts(page = 0, size = 20) {
@@ -10,11 +55,11 @@ export async function getAllPosts(page = 0, size = 20) {
     const res = await fetch(`${POSTS_API_URL}?${params.toString()}`, {
       headers: createHeaders(true),
     });
-    
+
     if (!res.ok) {
       throw new Error("Failed to fetch posts");
     }
-    
+
     return await res.json();
   } catch (error) {
     throw new Error(error.message || "Failed to load posts");
@@ -28,11 +73,11 @@ export async function getFeed(page = 0, size = 20) {
     const res = await fetch(`${POSTS_API_URL}/feed?${params.toString()}`, {
       headers: createHeaders(true),
     });
-    
+
     if (!res.ok) {
       throw new Error("Failed to fetch feed");
     }
-    
+
     return await res.json();
   } catch (error) {
     throw new Error(error.message || "Failed to load feed");
@@ -40,15 +85,17 @@ export async function getFeed(page = 0, size = 20) {
 }
 
 // Get trending posts
-export async function getTrendingPosts() {
+export async function getTrendingPosts(limit = 20, days = 0) {
   try {
-    const res = await fetch(`${POSTS_API_URL}/trending`);
-    
+    const params = new URLSearchParams({ limit, days });
+    const res = await fetch(`${POSTS_API_URL}/trending?${params.toString()}`);
+
     if (!res.ok) {
       throw new Error("Failed to fetch trending posts");
     }
-    
-    return await res.json();
+
+    const data = await res.json();
+    return Array.isArray(data?.posts) ? data.posts : data;
   } catch (error) {
     throw new Error(error.message || "Failed to load trending posts");
   }
@@ -62,13 +109,13 @@ export async function createPost(postData) {
       headers: createHeaders(true),
       body: JSON.stringify(postData),
     });
-    
+
     const data = await res.json();
-    
+
     if (!res.ok) {
       throw new Error(data.message || "Failed to create post");
     }
-    
+
     return data;
   } catch (error) {
     throw new Error(error.message || "Failed to create post");
@@ -81,11 +128,11 @@ export async function getPostById(postId) {
     const res = await fetch(`${POSTS_API_URL}/${postId}`, {
       headers: createHeaders(true),
     });
-    
+
     if (!res.ok) {
       throw new Error("Post not found");
     }
-    
+
     return await res.json();
   } catch (error) {
     throw new Error(error.message || "Failed to load post");
@@ -100,13 +147,13 @@ export async function updatePost(postId, postData) {
       headers: createHeaders(true),
       body: JSON.stringify(postData),
     });
-    
+
     const data = await res.json();
-    
+
     if (!res.ok) {
       throw new Error(data.message || "Failed to update post");
     }
-    
+
     return data;
   } catch (error) {
     throw new Error(error.message || "Failed to update post");
@@ -116,16 +163,28 @@ export async function updatePost(postId, postData) {
 // Delete post
 export async function deletePost(postId) {
   try {
-    const res = await fetch(`${POSTS_API_URL}/${postId}`, {
+    let userId = null;
+    try {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const u = JSON.parse(userStr);
+        userId = u?.id || u?.userId || null;
+      }
+    } catch { }
+
+    if (!userId) throw new Error('User not authenticated');
+
+    const url = `${POSTS_API_URL}/${postId}?userId=${encodeURIComponent(String(userId))}`;
+    const res = await fetch(url, {
       method: "DELETE",
       headers: createHeaders(true),
     });
-    
+
     if (!res.ok) {
       const data = await res.json();
       throw new Error(data.message || "Failed to delete post");
     }
-    
+
     return true;
   } catch (error) {
     throw new Error(error.message || "Failed to delete post");
@@ -137,162 +196,167 @@ export async function getPostsByUser(userId, page = 0, size = 20) {
   try {
     const params = new URLSearchParams({ page, size });
     const res = await fetch(`${POSTS_API_URL}/user/${userId}?${params.toString()}`);
-    
+
     if (!res.ok) {
       throw new Error("Failed to fetch user posts");
     }
-    
+
     return await res.json();
   } catch (error) {
     throw new Error(error.message || "Failed to load user posts");
   }
 }
 
+// ========== SHARES API ==========
+export async function shareItem(itemId, itemType) {
+  const res = await fetch(`${SOCIAL_API_URL}/share`, {
+    method: "POST",
+    headers: createHeaders(true),
+    body: JSON.stringify({ itemId, itemType }),
+  });
+
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.message || "Failed to share item");
+  }
+
+  return await res.json();
+}
+
 // ========== LIKES API ==========
-const LIKES_API_URL = `${import.meta.env.VITE_API_BASE_URL}/likes`;
+const likeItem = async (itemId, itemType) => {
+  const res = await fetch(`${SOCIAL_API_URL}/like`, {
+    method: "POST",
+    headers: createHeaders(true),
+    body: JSON.stringify({ itemId, itemType }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to like item");
+  }
+  return data;
+};
 
-// Like/unlike post
+const unlikeItem = async (itemId, itemType) => {
+  const params = buildQueryString({ itemId, itemType });
+  const res = await fetch(`${SOCIAL_API_URL}/like?${params}`, {
+    method: "DELETE",
+    headers: createHeaders(true),
+  });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.message || "Failed to unlike item");
+  }
+  return { success: true };
+};
+
+const isItemLiked = async (itemId, itemType) => {
+  const params = buildQueryString({ itemId, itemType });
+  const res = await fetch(`${SOCIAL_API_URL}/is-liked?${params}`, {
+    headers: createHeaders(true),
+  });
+  if (!res.ok) {
+    throw new Error("Failed to check like status");
+  }
+  const data = await res.json();
+  return Boolean(data.liked);
+};
+
 export async function togglePostLike(postId) {
-  try {
-    const res = await fetch(`${LIKES_API_URL}/post/${postId}`, {
-      method: "POST",
-      headers: createHeaders(true),
-    });
-    
-    const data = await res.json();
-    
-    if (!res.ok) {
-      throw new Error(data.message || "Failed to toggle like");
-    }
-    
-    return data;
-  } catch (error) {
-    throw new Error(error.message || "Failed to toggle like");
-  }
+  const liked = await isItemLiked(postId, ITEM_TYPES.POST);
+  return liked ? unlikeItem(postId, ITEM_TYPES.POST) : likeItem(postId, ITEM_TYPES.POST);
 }
 
-// Like/unlike song
 export async function toggleSongLike(songId) {
-  try {
-    const res = await fetch(`${LIKES_API_URL}/song/${songId}`, {
-      method: "POST",
-      headers: createHeaders(true),
-    });
-    
-    const data = await res.json();
-    
-    if (!res.ok) {
-      throw new Error(data.message || "Failed to toggle like");
-    }
-    
-    return data;
-  } catch (error) {
-    throw new Error(error.message || "Failed to toggle like");
-  }
+  const liked = await isItemLiked(songId, ITEM_TYPES.SONG);
+  return liked ? unlikeItem(songId, ITEM_TYPES.SONG) : likeItem(songId, ITEM_TYPES.SONG);
 }
 
-// Check if post is liked
 export async function checkPostLike(postId) {
-  try {
-    const res = await fetch(`${LIKES_API_URL}/post/${postId}/check`, {
-      headers: createHeaders(true),
-    });
-    
-    if (!res.ok) {
-      throw new Error("Failed to check like status");
-    }
-    
-    return await res.json();
-  } catch (error) {
-    throw new Error(error.message || "Failed to check like status");
-  }
+  const liked = await isItemLiked(postId, ITEM_TYPES.POST);
+  return { liked };
 }
 
-// Check if song is liked
 export async function checkSongLike(songId) {
-  try {
-    const res = await fetch(`${LIKES_API_URL}/song/${songId}/check`, {
-      headers: createHeaders(true),
-    });
-    
-    if (!res.ok) {
-      throw new Error("Failed to check like status");
-    }
-    
-    return await res.json();
-  } catch (error) {
-    throw new Error(error.message || "Failed to check like status");
-  }
+  const liked = await isItemLiked(songId, ITEM_TYPES.SONG);
+  return { liked };
 }
 
 // ========== FOLLOWS API ==========
-const FOLLOWS_API_URL = `${import.meta.env.VITE_API_BASE_URL}/follows`;
+const followUserRequest = async (followerId, followingId) => {
+  const res = await fetch(`${SOCIAL_API_URL}/follow`, {
+    method: "POST",
+    headers: createHeaders(true),
+    body: JSON.stringify({ followerId, followingId }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to follow user");
+  }
+  return data;
+};
 
-// Follow/unfollow user
-export async function toggleFollow(userId) {
-  try {
-    const res = await fetch(`${FOLLOWS_API_URL}/${userId}`, {
-      method: "POST",
-      headers: createHeaders(true),
-    });
-    
+const unfollowUserRequest = async (followerId, followingId) => {
+  const params = buildQueryString({ followerId, followingId });
+  const res = await fetch(`${SOCIAL_API_URL}/follow?${params}`, {
+    method: "DELETE",
+    headers: createHeaders(true),
+  });
+  if (!res.ok) {
     const data = await res.json();
-    
-    if (!res.ok) {
-      throw new Error(data.message || "Failed to toggle follow");
-    }
-    
-    return data;
-  } catch (error) {
-    throw new Error(error.message || "Failed to toggle follow");
+    throw new Error(data.message || "Failed to unfollow user");
   }
+  return { success: true };
+};
+
+const checkFollowingPair = async (followerId, followingId) => {
+  const params = buildQueryString({ followerId, followingId });
+  const res = await fetch(`${SOCIAL_API_URL}/is-following?${params}`, {
+    // public GET endpoint — do not include Authorization to avoid invalid-token errors
+    headers: createHeaders(false),
+  });
+  if (!res.ok) {
+    throw new Error("Failed to check follow status");
+  }
+  const data = await res.json();
+  return Boolean(data.following);
+};
+
+export async function toggleFollow(targetUserId) {
+  const followerId = requireUserId();
+  if (followerId === targetUserId) {
+    throw new Error('Cannot follow yourself');
+  }
+  const currentlyFollowing = await checkFollowingPair(followerId, targetUserId);
+  return currentlyFollowing
+    ? unfollowUserRequest(followerId, targetUserId)
+    : followUserRequest(followerId, targetUserId);
 }
 
-// Check if following user
 export async function checkFollowStatus(userId) {
-  try {
-    const res = await fetch(`${FOLLOWS_API_URL}/${userId}/check`, {
-      headers: createHeaders(true),
-    });
-    
-    if (!res.ok) {
-      throw new Error("Failed to check follow status");
-    }
-    
-    return await res.json();
-  } catch (error) {
-    throw new Error(error.message || "Failed to check follow status");
-  }
+  const followerId = requireUserId();
+  const following = await checkFollowingPair(followerId, userId);
+  return { following };
 }
 
-// Get user's followers
-export async function getUserFollowers(userId, page = 0, size = 20) {
-  try {
-    const params = new URLSearchParams({ page, size });
-    const res = await fetch(`${FOLLOWS_API_URL}/${userId}/followers?${params.toString()}`);
-    
-    if (!res.ok) {
-      throw new Error("Failed to fetch followers");
-    }
-    
-    return await res.json();
-  } catch (error) {
-    throw new Error(error.message || "Failed to load followers");
+export async function getUserFollowers(userId) {
+  const res = await fetch(`${SOCIAL_API_URL}/followers/${userId}`, {
+    // followers endpoint is public GET — avoid sending Authorization
+    headers: createHeaders(false),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to fetch followers');
   }
+  return await res.json();
 }
 
-// Get who user is following
-export async function getUserFollowing(userId, page = 0, size = 20) {
-  try {
-    const params = new URLSearchParams({ page, size });
-    const res = await fetch(`${FOLLOWS_API_URL}/${userId}/following?${params.toString()}`);
-    
-    if (!res.ok) {
-      throw new Error("Failed to fetch following");
-    }
-    
-    return await res.json();
-  } catch (error) {
-    throw new Error(error.message || "Failed to load following");
+export async function getUserFollowing(userId) {
+  const res = await fetch(`${SOCIAL_API_URL}/following/${userId}`, {
+    // following endpoint is public GET — avoid sending Authorization
+    headers: createHeaders(false),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to fetch following');
   }
+  return await res.json();
 }

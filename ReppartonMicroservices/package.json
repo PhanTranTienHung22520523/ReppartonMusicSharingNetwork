@@ -5,11 +5,26 @@
   "main": "migrate_analytics.js",
   "scripts": {
     "migrate": "node migrate_analytics.js",
+    "covers:upload": "node tools/cloudinary-cover-sync/upload_and_randomize_covers.js --mode=upload",
+    "covers:randomize": "node tools/cloudinary-cover-sync/upload_and_randomize_covers.js --mode=randomize",
+    "covers:all": "node tools/cloudinary-cover-sync/upload_and_randomize_covers.js --mode=all",
+    "covers:audioCleanup": "node tools/cloudinary-cover-sync/upload_and_randomize_covers.js --mode=audio-cleanup",
+    "users:resetPasswords": "node tools/users/reset_all_passwords.js",
+    "users:images:upload": "node tools/users/upload_and_randomize_user_images.js --mode=upload",
+    "users:images:randomize": "node tools/users/upload_and_randomize_user_images.js --mode=randomize",
+    "users:images:all": "node tools/users/upload_and_randomize_user_images.js --mode=all",
+    "users:roles:dry": "node tools/users/assign_random_roles.js --dry-run",
+    "users:roles:apply": "node tools/users/assign_random_roles.js --apply",
     "test": "echo \"No tests specified\""
   },
   "dependencies": {
-    "mongodb": "^6.0.0",
-    "pg": "^8.11.0"
+    "@faker-js/faker": "^8.3.1",
+    "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.8.0",
+    "dotenv": "^17.2.3",
+    "mongodb": "^6.21.0",
+    "pg": "^8.11.3",
+    "uuid": "^13.0.0"
   },
   "engines": {
     "node": ">=16.0.0"

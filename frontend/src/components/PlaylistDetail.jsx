@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { FaPlay, FaPause, FaHeart, FaShare, FaEllipsisH, FaTrash, FaEdit, FaMusic, FaClock, FaUser } from 'react-icons/fa';
 import { getPlaylistById, removeSongFromPlaylist } from '../api/playlistService';
+import { API_ENDPOINTS, createHeaders } from '../config/api.config';
 import { useMusicPlayer } from '../contexts/MusicPlayerContext';
 import { useAuth } from '../contexts/AuthContext';
 import MainLayout from '../components/MainLayout';
@@ -21,12 +22,44 @@ export default function PlaylistDetail() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [removingSong, setRemovingSong] = useState(null);
 
+  const unwrapApiResponse = (payload) => {
+    if (payload && typeof payload === 'object' && 'data' in payload) return payload.data;
+    return payload;
+  };
+
   const loadPlaylist = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const playlistData = await getPlaylistById(id);
-      setPlaylist(playlistData);
+
+      const songIdsRaw = playlistData?.songIds;
+      const songIds = Array.isArray(songIdsRaw)
+        ? songIdsRaw.map((s) => String(s || '').trim()).filter(Boolean)
+        : [];
+
+      // Hydrate songIds into Song objects for UI rendering.
+      const songs = await Promise.all(
+        songIds.map(async (songId) => {
+          try {
+            const res = await fetch(`${API_ENDPOINTS.songs}/${encodeURIComponent(songId)}`, {
+              headers: createHeaders(false),
+            });
+            if (!res.ok) return null;
+            const payload = await res.json();
+            return unwrapApiResponse(payload);
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      const hydratedSongs = songs.filter(Boolean);
+      setPlaylist({
+        ...playlistData,
+        songs: hydratedSongs,
+        songCount: typeof playlistData?.songCount === 'number' ? playlistData.songCount : hydratedSongs.length,
+      });
     } catch (err) {
       setError('Failed to load playlist');
       console.error('Failed to load playlist:', err);
@@ -50,7 +83,8 @@ export default function PlaylistDetail() {
 
   const handlePlaySong = (song, index) => {
     setCurrentSong(song);
-    setPlayerPlaylist(playlist.songs.slice(index)); // Start from selected song
+    // Keep the full playlist as the active queue so Next/Prev stays within it
+    setPlayerPlaylist(playlist.songs);
     setPlaying(true);
   };
 

@@ -4,7 +4,7 @@ spring:
   # MongoDB Configuration
   data:
     mongodb:
-      uri: ${MONGODB_URI}
+      uri: ${MONGODB_URI_PLAYLISTS:${MONGODB_URI:mongodb://localhost:27017/repparton_playlists}}
   # PostgreSQL for Analytics (optional)
   # datasource:
   #   url: ${POSTGRES_URL:jdbc:postgresql://localhost:5432/repparton_analytics}

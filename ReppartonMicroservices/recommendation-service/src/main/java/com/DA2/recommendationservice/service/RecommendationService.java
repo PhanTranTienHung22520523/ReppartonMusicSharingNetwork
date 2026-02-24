@@ -1,11 +1,15 @@
 package com.DA2.recommendationservice.service;
 
 import com.DA2.recommendationservice.client.*;
+import com.DA2.recommendationservice.entity.UserRecommendation;
+import com.DA2.recommendationservice.repository.UserRecommendationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @Service
 public class RecommendationService {
@@ -14,37 +18,172 @@ public class RecommendationService {
     private AnalyticsServiceClient analyticsServiceClient;
 
     @Autowired
+    private AIServiceClient aiServiceClient;
+
+    @Autowired
     private SongServiceClient songServiceClient;
 
     @Autowired
     private SocialServiceClient socialServiceClient;
+
+    @Autowired
+    private UserServiceClient userServiceClient;
+
+    @Autowired
+    private UserRecommendationRepository userRecommendationRepository;
 
     // Get personalized song recommendations for user
     public Map<String, Object> getPersonalizedRecommendations(String userId, int limit) {
         Map<String, Object> recommendations = new HashMap<>();
 
         try {
-            // 1. Get user's listen history
-            Object listenHistory = analyticsServiceClient.getUserListenHistory(userId, 50);
-            recommendations.put("basedOnHistory", listenHistory);
+            // 0. Check cache first
+            Optional<UserRecommendation> cached = userRecommendationRepository.findById(userId);
+            if (cached.isPresent()) {
+                List<String> songIds = cached.get().getRecommendedSongIds();
+                if (songIds != null && !songIds.isEmpty()) {
+                    List<Object> enrichedSongs = new ArrayList<>();
+                    for (String songId : songIds) {
+                        try {
+                            Object songResp = songServiceClient.getSongById(songId);
+                            if (songResp != null) {
+                                // Extract data from ApiResponse if needed
+                                if (songResp instanceof Map<?, ?> respMap) {
+                                    Object songData = respMap.get("data");
+                                    enrichedSongs.add(songData != null ? songData : songResp);
+                                } else {
+                                    enrichedSongs.add(songResp);
+                                }
+                            }
+                        } catch (Exception e) {
+                            System.out.println("Failed to enrich song " + songId + ": " + e.getMessage());
+                        }
+                    }
+                    if (!enrichedSongs.isEmpty()) {
+                        recommendations.put("recommendations", enrichedSongs);
+                        recommendations.put("source", "cache");
+                        return recommendations;
+                    }
+                }
+            } else {
+                System.out.println("No cache found for userId: " + userId);
+            }
 
-            // 2. Get songs from followed users (collaborative filtering)
-            CompletableFuture<Object> followingFuture = CompletableFuture.supplyAsync(() -> {
+            // 1. Get user's listen history
+            CompletableFuture<Object> listenHistoryFuture = CompletableFuture.supplyAsync(() -> {
                 try {
-                    return socialServiceClient.getFollowing(userId);
+                    return analyticsServiceClient.getUserListenHistory(userId, 50);
                 } catch (Exception e) {
-                    return Map.of("error", "Social service unavailable");
+                    return null;
+                }
+            });
+            
+            // 2. Get user's search history
+            CompletableFuture<Object> searchHistoryFuture = CompletableFuture.supplyAsync(() -> {
+                try {
+                    return analyticsServiceClient.getUserSearchHistory(userId);
+                } catch (Exception e) {
+                    return null;
                 }
             });
 
-            // Wait and collect
-            recommendations.put("fromFollowing", followingFuture.get());
+            // 3. Get user preferred genres (for cold start)
+            CompletableFuture<List<String>> preferredGenresFuture = CompletableFuture.supplyAsync(() -> {
+                try {
+                    Map<String, Object> userProfile = userServiceClient.getUserById(userId);
+                    if (userProfile != null && userProfile.containsKey("preferredGenres")) {
+                        return (List<String>) userProfile.get("preferredGenres");
+                    }
+                } catch (Exception e) {
+                    // Ignore user service failure
+                }
+                return null;
+            });
+
+            CompletableFuture.allOf(listenHistoryFuture, searchHistoryFuture, preferredGenresFuture).join();
+
+            Object listenHistory = listenHistoryFuture.get();
+            Object searchHistory = searchHistoryFuture.get();
+            List<String> preferredGenres = preferredGenresFuture.get();
+
+            // 4. Call AI Service for hybrid recommendations
+            Map<String, Object> aiRequest = new HashMap<>();
+            aiRequest.put("user_id", userId);
+            aiRequest.put("listening_history", listenHistory);
+            if (searchHistory != null) {
+                aiRequest.put("search_history", searchHistory);
+            }
+            if (preferredGenres != null) {
+                aiRequest.put("preferred_genres", preferredGenres);
+            }
+            aiRequest.put("limit", limit);
+
+            Map<String, Object> aiResponse = aiServiceClient.getRecommendationsByUser(aiRequest);
+            
+            if (aiResponse != null && aiResponse.containsKey("recommendations")) {
+                Object recsObj = aiResponse.get("recommendations");
+                if (recsObj instanceof List<?> recsList) {
+                    List<Object> enrichedSongs = new ArrayList<>();
+                    List<String> songIdsToCache = new ArrayList<>();
+                    
+                    for (Object recObj : recsList) {
+                        if (recObj instanceof Map<?, ?> rec) {
+                            String songId = String.valueOf(rec.get("song_id"));
+                            songIdsToCache.add(songId);
+                            try {
+                                Object songResp = songServiceClient.getSongById(songId);
+                                if (songResp != null) {
+                                    // Extract data from ApiResponse if needed
+                                    if (songResp instanceof Map<?, ?> respMap) {
+                                        Object songData = respMap.get("data");
+                                        enrichedSongs.add(songData != null ? songData : songResp);
+                                    } else {
+                                        enrichedSongs.add(songResp);
+                                    }
+                                }
+                            } catch (Exception e) {
+                                System.out.println("Failed to enrich song " + songId + ": " + e.getMessage());
+                            }
+                        }
+                    }
+                    
+                    // Save to cache
+                    UserRecommendation userRec = UserRecommendation.builder()
+                        .userId(userId)
+                        .recommendedSongIds(songIdsToCache)
+                        .updatedAt(LocalDateTime.now())
+                        .build();
+                    userRecommendationRepository.save(userRec);
+                    
+                    recommendations.put("recommendations", enrichedSongs);
+                    recommendations.put("source", "fresh");
+                } else {
+                    recommendations.put("recommendations", recsObj);
+                }
+            } else {
+                 recommendations.put("error", "AI service returned no recommendations");
+            }
 
         } catch (Exception e) {
             recommendations.put("error", "Failed to generate recommendations: " + e.getMessage());
         }
 
         return recommendations;
+    }
+
+    // Refresh recommendations for a specific user (Async)
+    public void refreshRecommendations(String userId) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                // Clear cache first to force fresh fetch
+                // userRecommendationRepository.deleteById(userId); // Optional
+                
+                // Fetch fresh from AI (this will trigger save to cache)
+                getPersonalizedRecommendations(userId, 20);
+            } catch (Exception e) {
+                // Log error
+            }
+        });
     }
 
     // Get trending songs (most popular recently)
@@ -89,13 +228,15 @@ public class RecommendationService {
         Map<String, Object> defaults = new HashMap<>();
 
         try {
-            // Return popular/trending songs for new users
-            defaults.put("message", "Popular songs for new users");
+            // Return popular/trending songs for new users from analytics service
+            Object trendingSongs = analyticsServiceClient.getTrendingSongs(limit);
+            defaults.put("songs", trendingSongs);
             defaults.put("type", "default");
             defaults.put("limit", limit);
             
         } catch (Exception e) {
             defaults.put("error", "Failed to get default recommendations: " + e.getMessage());
+            defaults.put("songs", Collections.emptyList());
         }
 
         return defaults;

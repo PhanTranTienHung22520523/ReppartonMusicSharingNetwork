@@ -3,32 +3,77 @@ import { API_ENDPOINTS, WS_ENDPOINTS, getAuthToken, createHeaders } from '../con
 const API_URL = API_ENDPOINTS.notifications;
 const WS_URL = WS_ENDPOINTS.notifications;
 
+function getUserIdFromToken() {
+  const token = getAuthToken();
+  if (!token) return null;
+
+  try {
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+
+    // Base64URL decode
+    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = payload + '==='.slice((payload.length + 3) % 4);
+    const json = JSON.parse(atob(padded));
+    return typeof json?.sub === 'string' && json.sub ? json.sub : null;
+  } catch {
+    return null;
+  }
+}
+
+const getStoredUserId = () => {
+  // Prefer JWT subject to avoid mismatch between stored user shapes and backend identity.
+  const tokenSub = getUserIdFromToken();
+  if (tokenSub) return tokenSub;
+
+  const user = localStorage.getItem('user');
+  if (!user) return null;
+
+  try {
+    const userData = JSON.parse(user);
+    return (
+      userData.id ||
+      userData.userId ||
+      userData._id ||
+      userData.email ||
+      null
+    );
+  } catch {
+    return null;
+  }
+};
+
 // Get user notifications
 export async function getUserNotifications(page = 0, size = 20) {
   try {
-    const user = localStorage.getItem("user");
-    if (!user) {
-      return { content: [], totalElements: 0 };
-    }
-    
-    const userData = JSON.parse(user);
-    const userId = userData.id || userData.email; // fallback to email if id not available
-    
+    const userId = getStoredUserId();
     if (!userId) {
-      console.error("No userId found in user data:", userData);
+      console.warn('[NotificationService] No user in localStorage');
       return { content: [], totalElements: 0 };
     }
     
-    const res = await fetch(`${API_URL}/${userId}?page=${page}&size=${size}`, {
-      headers: createHeaders(true),
-    });
+    const url = `${API_URL}/user/${encodeURIComponent(userId)}?page=${page}&size=${size}`;
+    console.log('[NotificationService] Fetching notifications from:', url);
+    console.log('[NotificationService] UserId:', userId);
+    
+    const headers = createHeaders(true);
+    console.log('[NotificationService] Request headers:', headers);
+    
+    const res = await fetch(url, { headers });
+    
+    console.log('[NotificationService] Response status:', res.status);
     
     if (!res.ok) {
-      throw new Error("Failed to fetch notifications");
+      const errorText = await res.text();
+      console.error('[NotificationService] Error response:', errorText);
+      throw new Error(`Failed to fetch notifications: ${res.status} ${res.statusText}`);
     }
     
-    return await res.json();
+    const data = await res.json();
+    console.log('[NotificationService] Success! Received notifications:', data);
+    return data;
   } catch (error) {
+    console.error('[NotificationService] Exception:', error);
     throw new Error(error.message || "Network error");
   }
 }
@@ -36,20 +81,12 @@ export async function getUserNotifications(page = 0, size = 20) {
 // Get unread notifications count
 export async function getUnreadCount() {
   try {
-    const user = localStorage.getItem("user");
-    if (!user) {
-      return 0;
-    }
-    
-    const userData = JSON.parse(user);
-    const userId = userData.id || userData.email; // fallback to email if id not available
-    
+    const userId = getStoredUserId();
     if (!userId) {
-      console.error("No userId found in user data:", userData);
       return 0;
     }
     
-    const res = await fetch(`${API_URL}/unread/count?userId=${userId}`, {
+    const res = await fetch(`${API_URL}/user/${encodeURIComponent(userId)}/unread/count`, {
       headers: createHeaders(true),
     });
     
@@ -86,7 +123,12 @@ export async function markAsRead(notificationId) {
 // Mark all notifications as read
 export async function markAllAsRead() {
   try {
-    const res = await fetch(`${API_URL}/read-all`, {
+    const userId = getStoredUserId();
+    if (!userId) {
+      return { success: true };
+    }
+
+    const res = await fetch(`${API_URL}/user/${encodeURIComponent(userId)}/read-all`, {
       method: "PUT",
       headers: createHeaders(true),
     });

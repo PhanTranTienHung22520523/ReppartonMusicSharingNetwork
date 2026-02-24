@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import MainLayout from "../components/MainLayout";
 import { FaClock, FaPlay, FaHeart, FaShare } from "react-icons/fa";
+import * as analyticsApi from "../api/analyticsService";
+import { getSongById } from "../api/songService";
 
 export default function History() {
   const { user } = useAuth();
@@ -9,6 +11,7 @@ export default function History() {
   const [searchHistory, setSearchHistory] = useState([]);
   const [activeTab, setActiveTab] = useState("listen");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     loadHistory();
@@ -16,38 +19,59 @@ export default function History() {
 
   const loadHistory = async () => {
     try {
+      setError("");
+      if (!user?.id) {
+        setListenHistory([]);
+        setSearchHistory([]);
+        return;
+      }
+
       if (activeTab === "listen") {
-        // Mock listen history
-        setListenHistory([
-          {
-            id: 1,
-            song: { id: 1, title: "Summer Vibes", artist: "DJ Cool", duration: "3:45", coverUrl: "" },
-            playedAt: "2024-11-23T10:30:00",
+        const raw = await analyticsApi.getUserListenHistory(user.id);
+
+        // Enrich with song details (best-effort, cached per load)
+        const uniqueSongIds = Array.from(new Set((raw || []).map((h) => h.songId).filter(Boolean)));
+        const songMap = new Map();
+        await Promise.all(
+          uniqueSongIds.map(async (songId) => {
+            try {
+              const song = await getSongById(songId);
+              songMap.set(songId, song);
+            } catch {
+              // Ignore enrichment failures
+            }
+          })
+        );
+
+        const items = (raw || []).map((h) => {
+          const song = songMap.get(h.songId);
+          return {
+            id: h.id,
+            song: {
+              id: h.songId,
+              title: song?.title || h.songId,
+              artist: song?.artistName || song?.artist || h.artistId || "",
+              duration: song?.duration || song?.durationSeconds || "",
+              coverUrl: song?.coverUrl || song?.imageUrl || "",
+            },
+            playedAt: h.createdAt,
             completed: true,
-          },
-          {
-            id: 2,
-            song: { id: 2, title: "Midnight Drive", artist: "The Waves", duration: "4:12", coverUrl: "" },
-            playedAt: "2024-11-23T09:15:00",
-            completed: false,
-          },
-          {
-            id: 3,
-            song: { id: 3, title: "Electric Dreams", artist: "Neon Lights", duration: "3:28", coverUrl: "" },
-            playedAt: "2024-11-22T20:45:00",
-            completed: true,
-          },
-        ]);
+          };
+        });
+        setListenHistory(items);
       } else {
-        // Mock search history
-        setSearchHistory([
-          { id: 1, query: "summer music", timestamp: "2024-11-23T10:00:00", results: 245 },
-          { id: 2, query: "chill beats", timestamp: "2024-11-23T08:30:00", results: 189 },
-          { id: 3, query: "workout playlist", timestamp: "2024-11-22T18:15:00", results: 156 },
-        ]);
+        const raw = await analyticsApi.getUserSearchHistory(user.id);
+        const items = (raw || []).map((h) => ({
+          id: h.id,
+          query: h.searchQuery,
+          timestamp: h.searchedAt,
+          results: null,
+        }));
+        setSearchHistory(items);
       }
     } catch (error) {
       console.error("Failed to load history:", error);
+      setError(error?.message || "Failed to load history");
     } finally {
       setLoading(false);
     }
@@ -66,13 +90,7 @@ export default function History() {
   };
 
   const clearHistory = () => {
-    if (confirm(`Are you sure you want to clear your ${activeTab} history?`)) {
-      if (activeTab === "listen") {
-        setListenHistory([]);
-      } else {
-        setSearchHistory([]);
-      }
-    }
+    alert("Chưa hỗ trợ xoá lịch sử trên server.");
   };
 
   if (loading) {
@@ -99,6 +117,8 @@ export default function History() {
             Clear History
           </button>
         </div>
+
+        {error && <div className="alert alert-danger">{error}</div>}
 
         {/* Tabs */}
         <ul className="nav nav-tabs mb-4">
@@ -167,7 +187,7 @@ export default function History() {
                         {item.song.title}
                       </h6>
                       <div style={{ color: "var(--text-muted)", fontSize: 14 }}>
-                        {item.song.artist} • {item.song.duration}
+                        {item.song.artist}{item.song.duration ? ` • ${item.song.duration}` : ""}
                       </div>
                       <small style={{ color: "var(--text-muted)" }}>
                         {formatTimeAgo(item.playedAt)}

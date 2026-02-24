@@ -1,5 +1,6 @@
 package com.DA2.genreservice.controller;
 
+import com.DA2.genreservice.dto.GenreResponse;
 import com.DA2.genreservice.entity.Genre;
 import com.DA2.genreservice.service.GenreService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,8 +27,8 @@ public class GenreController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Genre>> getAllGenres() {
-        return ResponseEntity.ok(service.getAllGenres());
+    public ResponseEntity<List<GenreResponse>> getAllGenres() {
+        return ResponseEntity.ok(service.getAllGenresEnriched());
     }
 
     @GetMapping("/{id}")

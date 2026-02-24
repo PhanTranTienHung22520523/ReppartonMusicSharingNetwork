@@ -2,6 +2,12 @@ import { useEffect, useState } from "react";
 import { getSongComments, addCommentToSong } from "../api/commentService";
 import { useAuth } from "../contexts/AuthContext";
 
+function normalizeCommentsResponse(response) {
+  if (Array.isArray(response)) return response;
+  if (response && Array.isArray(response.content)) return response.content;
+  return [];
+}
+
 export default function CommentSection({ songId }) {
   const { user } = useAuth();
   const [comments, setComments] = useState([]);
@@ -18,7 +24,7 @@ export default function CommentSection({ songId }) {
     setLoading(true);
     try {
       const response = await getSongComments(songId);
-      setComments(response || []);
+      setComments(normalizeCommentsResponse(response));
     } catch (error) {
       console.error('Failed to load comments:', error);
       setComments([]);

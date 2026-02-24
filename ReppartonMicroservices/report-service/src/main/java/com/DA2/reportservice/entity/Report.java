@@ -9,6 +9,7 @@ public class Report {
     @Id
     private String id;
     private String reporterId;
+    private String reporterName;
     private String itemId;
     private String itemType; // "user", "song", "post", "comment", "story"
     private String reason;
@@ -24,9 +25,10 @@ public class Report {
         this.status = "pending";
     }
 
-    public Report(String reporterId, String itemId, String itemType, String reason) {
+    public Report(String reporterId, String reporterName, String itemId, String itemType, String reason) {
         this();
         this.reporterId = reporterId;
+        this.reporterName = reporterName;
         this.itemId = itemId;
         this.itemType = itemType;
         this.reason = reason;
@@ -47,6 +49,14 @@ public class Report {
 
     public void setReporterId(String reporterId) {
         this.reporterId = reporterId;
+    }
+
+    public String getReporterName() {
+        return reporterName;
+    }
+
+    public void setReporterName(String reporterName) {
+        this.reporterName = reporterName;
     }
 
     public String getItemId() {

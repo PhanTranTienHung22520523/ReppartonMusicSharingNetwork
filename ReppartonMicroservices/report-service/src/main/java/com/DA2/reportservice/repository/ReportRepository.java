@@ -13,6 +13,10 @@ public interface ReportRepository extends MongoRepository<Report, String> {
     
     // Find reports by status
     Page<Report> findByStatusOrderByCreatedAtDesc(String status, Pageable pageable);
+    
+    // Find reports by status (case insensitive)
+    Page<Report> findByStatusIgnoreCaseOrderByCreatedAtDesc(String status, Pageable pageable);
+
     List<Report> findByStatus(String status);
     
     // Find reports by reporter
@@ -26,6 +30,9 @@ public interface ReportRepository extends MongoRepository<Report, String> {
     
     // Count reports by status
     long countByStatus(String status);
+    
+    // Count reports by status (case insensitive)
+    long countByStatusIgnoreCase(String status);
     
     // Count reports for specific item
     long countByItemIdAndItemType(String itemId, String itemType);

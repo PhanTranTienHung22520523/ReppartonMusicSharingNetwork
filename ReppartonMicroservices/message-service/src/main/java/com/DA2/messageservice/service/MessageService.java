@@ -1,21 +1,24 @@
 package com.DA2.messageservice.service;
 
+import com.DA2.messageservice.client.UserServiceClient;
 import com.DA2.messageservice.entity.Conversation;
 import com.DA2.messageservice.entity.DuoMessage;
 import com.DA2.messageservice.dto.ConversationDTO;
 import com.DA2.messageservice.dto.UserDTO;
 import com.DA2.messageservice.repository.ConversationRepository;
 import com.DA2.messageservice.repository.DuoMessageRepository;
+import com.DA2.messageservice.websocket.MessageWebSocketPublisher;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.client.RestTemplate;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
 
 @Service
 public class MessageService {
@@ -27,7 +30,16 @@ public class MessageService {
     private DuoMessageRepository messageRepository;
 
     @Autowired(required = false)
+    private MessageWebSocketPublisher webSocketPublisher;
+
+    @Autowired(required = false)
     private UserServiceClient userServiceClient;
+
+    @Autowired
+    private RestTemplate restTemplate;
+
+    @Value("${notification.service.url:http://localhost:8086/api/notifications}")
+    private String notificationServiceUrl;
 
     // Get or create conversation
     @Transactional
@@ -36,6 +48,12 @@ public class MessageService {
         
         if (existingConv.isPresent()) {
             return existingConv.get();
+        }
+
+        // Enforce permission for creating a *new* conversation.
+        // Existing conversations are still returned so users can read history.
+        if (!canSendMessage(user1Id, user2Id)) {
+            throw new RuntimeException("You cannot start a direct conversation with this user.");
         }
         
         // Create new conversation
@@ -46,6 +64,11 @@ public class MessageService {
     // Send message
     @Transactional
     public DuoMessage sendMessage(String senderId, String receiverId, String content) {
+        // Check if sender can message the receiver
+        if (!canSendMessage(senderId, receiverId)) {
+            throw new RuntimeException("You cannot send direct messages to this artist. Please use group chat instead.");
+        }
+        
         // Get or create conversation
         Conversation conversation = getOrCreateConversation(senderId, receiverId);
         
@@ -55,7 +78,81 @@ public class MessageService {
         
         // Create and save message
         DuoMessage message = new DuoMessage(conversation.getId(), senderId, receiverId, content);
-        return messageRepository.save(message);
+        DuoMessage saved = messageRepository.save(message);
+
+        // Push real-time event to receiver (best-effort)
+        if (webSocketPublisher != null) {
+            HashMap<String, Object> payload = new HashMap<>();
+            payload.put("type", "message");
+            payload.put("id", saved.getId());
+            payload.put("conversationId", saved.getConversationId());
+            payload.put("senderId", saved.getSenderId());
+            payload.put("receiverId", saved.getReceiverId());
+            payload.put("content", saved.getMessage());
+            payload.put("timestamp", saved.getSentAt());
+            webSocketPublisher.sendToUser(receiverId, payload);
+        }
+
+        // Create bell notification via notification-service (best-effort)
+        if (receiverId != null && !receiverId.isBlank() && senderId != null && !senderId.equals(receiverId)) {
+            sendNotification(
+                    receiverId,
+                    senderId,
+                    "message",
+                    "New message",
+                    "New message from user " + senderId,
+                    saved.getConversationId()
+            );
+        }
+
+        return saved;
+    }
+
+    private void sendNotification(String recipientId, String actorId, String type, String title, String message, String referenceId) {
+        try {
+            if (recipientId == null || recipientId.isBlank()) return;
+            Map<String, Object> body = new HashMap<>();
+            body.put("userId", recipientId);
+            body.put("actorId", actorId);
+            body.put("type", type);
+            body.put("title", title);
+            body.put("message", message);
+            body.put("referenceId", referenceId);
+            restTemplate.postForObject(notificationServiceUrl, body, Object.class);
+        } catch (Exception ignored) {
+            // best-effort
+        }
+    }
+    
+    // Check if user can send direct message to another user
+    private boolean canSendMessage(String senderId, String receiverId) {
+        try {
+            if (userServiceClient != null) {
+                // Get sender and receiver info
+                UserDTO sender = userServiceClient.getUserById(senderId);
+                UserDTO receiver = userServiceClient.getUserById(receiverId);
+                
+                // If receiver is an Artist
+                if ("ARTIST".equalsIgnoreCase(receiver.getRole())) {
+                    // Check if artist allows normal user messages
+                    // If sender is also an artist, allow
+                    if ("ARTIST".equalsIgnoreCase(sender.getRole())) {
+                        return true;
+                    }
+                    // If sender is normal user, check artist's settings
+                    // Default: Artists don't allow normal user DMs (allowNormalUserMessages = false)
+                    return receiver.isAllowNormalUserMessages();
+                }
+                
+                // If receiver is not an artist, allow (normal user to normal user)
+                return true;
+            }
+        } catch (Exception e) {
+            System.err.println("Error checking message permissions: " + e.getMessage());
+            // If user service is unavailable, default to blocking
+            return false;
+        }
+        return true; // Fallback: allow if service not available
     }
 
     // Get messages in conversation
@@ -72,12 +169,45 @@ public class MessageService {
             try {
                 UserDTO user1 = getUserInfo(conv.getUser1Id());
                 UserDTO user2 = getUserInfo(conv.getUser2Id());
-                result.add(new ConversationDTO(conv.getId(), user1, user2));
+
+                DuoMessage last = null;
+                try {
+                    last = messageRepository.findFirstByConversationIdOrderBySentAtDesc(conv.getId());
+                } catch (Exception ignored) {
+                    // best-effort
+                }
+
+                String lastText = last != null ? last.getMessage() : null;
+                LocalDateTime lastAt = last != null && last.getSentAt() != null ? last.getSentAt() : conv.getLastMessageAt();
+                long unreadCount = 0L;
+                try {
+                    unreadCount = messageRepository.countByConversationIdAndIsReadFalseAndReceiverId(conv.getId(), userId);
+                } catch (Exception ignored) {
+                    // best-effort
+                }
+
+                result.add(new ConversationDTO(conv.getId(), user1, user2, lastText, lastAt, unreadCount));
             } catch (Exception e) {
                 // If user service is unavailable, create basic DTOs
                 UserDTO user1 = new UserDTO(conv.getUser1Id(), "Unknown", "Unknown", null);
                 UserDTO user2 = new UserDTO(conv.getUser2Id(), "Unknown", "Unknown", null);
-                result.add(new ConversationDTO(conv.getId(), user1, user2));
+
+                DuoMessage last = null;
+                try {
+                    last = messageRepository.findFirstByConversationIdOrderBySentAtDesc(conv.getId());
+                } catch (Exception ignored) {
+                    // best-effort
+                }
+                String lastText = last != null ? last.getMessage() : null;
+                LocalDateTime lastAt = last != null && last.getSentAt() != null ? last.getSentAt() : conv.getLastMessageAt();
+                long unreadCount = 0L;
+                try {
+                    unreadCount = messageRepository.countByConversationIdAndIsReadFalseAndReceiverId(conv.getId(), userId);
+                } catch (Exception ignored) {
+                    // best-effort
+                }
+
+                result.add(new ConversationDTO(conv.getId(), user1, user2, lastText, lastAt, unreadCount));
             }
         }
         
@@ -135,11 +265,5 @@ public class MessageService {
             }
         }
         return new UserDTO(userId, "Unknown", "Unknown", null);
-    }
-
-    @FeignClient(name = "user-service")
-    interface UserServiceClient {
-        @GetMapping("/api/users/{id}")
-        UserDTO getUserById(@PathVariable("id") String id);
     }
 }

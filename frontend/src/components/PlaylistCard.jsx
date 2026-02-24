@@ -2,10 +2,42 @@ import { Link } from 'react-router-dom';
 import { FaPlay, FaMusic, FaLock, FaGlobe, FaEllipsisH, FaEdit, FaTrash, FaHeart, FaShare } from 'react-icons/fa';
 import UserAvatar from './UserAvatar';
 
-export default function PlaylistCard({ playlist, isOwner = false, onEdit, onDelete }) {
+export default function PlaylistCard({ playlist, currentUser, isOwner = false, onEdit, onDelete }) {
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString();
   };
+
+  const coerceBoolean = (value) => {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') {
+      if (value === 1) return true;
+      if (value === 0) return false;
+      return undefined;
+    }
+    if (typeof value === 'string') {
+      const v = value.trim().toLowerCase();
+      if (v === 'true') return true;
+      if (v === 'false') return false;
+    }
+    return undefined;
+  };
+
+  const isPrivateValue = coerceBoolean(playlist?.isPrivate);
+  const isPublicValue = coerceBoolean(playlist?.isPublic);
+  // Prefer isPrivate from backend when present; otherwise fall back to isPublic
+  const isPublic =
+    typeof isPrivateValue === 'boolean'
+      ? !isPrivateValue
+      : (typeof isPublicValue === 'boolean' ? isPublicValue : false);
+
+  const songCount =
+    (typeof playlist?.songCount === 'number' ? playlist.songCount : undefined) ??
+    (Array.isArray(playlist?.songs) ? playlist.songs.length : undefined) ??
+    (Array.isArray(playlist?.songIds) ? playlist.songIds.length : undefined) ??
+    (Array.isArray(playlist?.songIdList) ? playlist.songIdList.length : undefined) ??
+    0;
+
+  const displayUser = playlist?.user || currentUser;
 
   const handleEdit = (e) => {
     e.preventDefault();
@@ -22,12 +54,12 @@ export default function PlaylistCard({ playlist, isOwner = false, onEdit, onDele
   return (
     <div className="playlist-card">
       <Link to={`/playlist/${playlist.id}`} className="text-decoration-none">
-        <div className="card border-0 shadow-sm hover-lift h-100" style={{ borderRadius: '16px', transition: 'all 0.3s ease' }}>
+        <div className="card glass-medium border-0 hover-depth-lift shimmer h-100" style={{ borderRadius: 'var(--border-radius-lg)', transition: 'all var(--transition-medium)', boxShadow: 'var(--depth-md)' }}>
           {/* Playlist Cover */}
-          <div className="position-relative" style={{ height: '200px', background: 'linear-gradient(135deg, var(--primary-color), var(--secondary-color))' }}>
-            <div className="position-absolute top-50 start-50 translate-middle text-center">
-              <FaMusic size={48} className="text-white mb-2 opacity-75" />
-              <div className="text-white small fw-medium">{playlist.songCount || 0} Songs</div>
+          <div className="position-relative gradient-overlay-purple" style={{ height: '200px', background: 'var(--gradient-purple)', boxShadow: 'var(--depth-purple)' }}>
+            <div className="position-absolute top-50 start-50 translate-middle text-center float-element">
+              <FaMusic size={48} className="text-white mb-2" style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))' }} />
+              <div className="text-white small fw-medium" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>{songCount} Songs</div>
             </div>
             
             {/* Play Button */}
@@ -53,7 +85,7 @@ export default function PlaylistCard({ playlist, isOwner = false, onEdit, onDele
             {/* Privacy Icon */}
             <div className="position-absolute top-2 start-2">
               <span className="badge bg-dark bg-opacity-75 text-white">
-                {playlist.isPublic ? <FaGlobe size={12} /> : <FaLock size={12} />}
+                {isPublic ? <FaGlobe size={12} /> : <FaLock size={12} />}
               </span>
             </div>
 
@@ -135,7 +167,7 @@ export default function PlaylistCard({ playlist, isOwner = false, onEdit, onDele
             <div className="d-flex align-items-center justify-content-between text-muted small mb-3">
               <span>
                 <FaMusic className="me-1" size={10} />
-                {playlist.songCount || 0} songs
+                {songCount} songs
               </span>
               <span>
                 Updated {formatDate(playlist.updatedAt || playlist.createdAt)}
@@ -145,17 +177,17 @@ export default function PlaylistCard({ playlist, isOwner = false, onEdit, onDele
             {/* Creator Info */}
             <div className="d-flex align-items-center">
               <UserAvatar 
-                user={playlist.user} 
+                user={displayUser} 
                 size={24} 
                 className="me-2"
               />
               <div className="flex-grow-1 min-width-0">
                 <div className="text-muted small text-truncate">
-                  by {playlist.user?.fullName || playlist.user?.username || 'Unknown'}
+                  by {displayUser?.fullName || displayUser?.username || 'Unknown'}
                 </div>
               </div>
               <div className="d-flex align-items-center text-muted small">
-                {playlist.isPublic ? (
+                {isPublic ? (
                   <>
                     <FaGlobe className="me-1" size={10} />
                     Public

@@ -35,9 +35,9 @@ public class NotificationController {
 
     @GetMapping("/user/{userId}")
     public ResponseEntity<?> getUserNotifications(
-            @PathVariable String userId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @PathVariable("userId") String userId,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size) {
         try {
             Page<Notification> notifications = notificationService.getUserNotifications(userId, PageRequest.of(page, size));
             return ResponseEntity.ok(notifications);
@@ -47,7 +47,7 @@ public class NotificationController {
     }
 
     @GetMapping("/user/{userId}/unread")
-    public ResponseEntity<?> getUnreadNotifications(@PathVariable String userId) {
+    public ResponseEntity<?> getUnreadNotifications(@PathVariable("userId") String userId) {
         try {
             List<Notification> notifications = notificationService.getUnreadNotifications(userId);
             return ResponseEntity.ok(notifications);
@@ -57,7 +57,7 @@ public class NotificationController {
     }
 
     @GetMapping("/user/{userId}/unread/count")
-    public ResponseEntity<?> getUnreadCount(@PathVariable String userId) {
+    public ResponseEntity<?> getUnreadCount(@PathVariable("userId") String userId) {
         try {
             long count = notificationService.getUnreadCount(userId);
             return ResponseEntity.ok(Map.of("count", count));
@@ -67,7 +67,7 @@ public class NotificationController {
     }
 
     @PutMapping("/{notificationId}/read")
-    public ResponseEntity<?> markAsRead(@PathVariable String notificationId) {
+    public ResponseEntity<?> markAsRead(@PathVariable("notificationId") String notificationId) {
         try {
             notificationService.markAsRead(notificationId);
             return ResponseEntity.ok(Map.of("success", true));
@@ -77,7 +77,7 @@ public class NotificationController {
     }
 
     @PutMapping("/user/{userId}/read-all")
-    public ResponseEntity<?> markAllAsRead(@PathVariable String userId) {
+    public ResponseEntity<?> markAllAsRead(@PathVariable("userId") String userId) {
         try {
             notificationService.markAllAsRead(userId);
             return ResponseEntity.ok(Map.of("success", true));
@@ -87,7 +87,7 @@ public class NotificationController {
     }
 
     @DeleteMapping("/{notificationId}")
-    public ResponseEntity<?> deleteNotification(@PathVariable String notificationId) {
+    public ResponseEntity<?> deleteNotification(@PathVariable("notificationId") String notificationId) {
         try {
             notificationService.deleteNotification(notificationId);
             return ResponseEntity.ok(Map.of("success", true));

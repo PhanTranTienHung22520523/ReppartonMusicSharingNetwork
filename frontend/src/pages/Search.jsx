@@ -21,8 +21,11 @@ export default function Search() {
   // Load recent searches from localStorage
   useEffect(() => {
     const saved = localStorage.getItem("recentSearches");
+    console.log("Loading recent searches from localStorage:", saved);
     if (saved) {
-      setRecentSearches(JSON.parse(saved));
+      const parsed = JSON.parse(saved);
+      console.log("Parsed recent searches:", parsed);
+      setRecentSearches(parsed);
     }
   }, []);
 
@@ -39,6 +42,8 @@ export default function Search() {
   // Save recent searches
   const saveRecentSearch = (query) => {
     const updated = [query, ...recentSearches.filter(s => s !== query)].slice(0, 10);
+    console.log("Saving recent search:", query);
+    console.log("Updated recent searches:", updated);
     setRecentSearches(updated);
     localStorage.setItem("recentSearches", JSON.stringify(updated));
   };
@@ -168,16 +173,16 @@ export default function Search() {
         {/* Search Header */}
         <div className="row mb-4">
           <div className="col-12">
-            <div className="card border-0 shadow-sm">
-              <div className="card-body p-4">
+            <div className="card border-0 shadow-sm" style={{overflow: 'visible'}}>
+              <div className="card-body p-4" style={{position: 'relative', overflow: 'visible'}}>
                 <h2 className="mb-3">
                   <FaSearch className="me-2" />
                   Discover Music & Artists
                 </h2>
                 
                 {/* Search Form */}
-                <form onSubmit={handleSearch} className="position-relative">
-                  <div className="input-group mb-3">
+                <form onSubmit={handleSearch} className="position-relative" style={{overflow: 'visible'}}>
+                  <div className="input-group mb-3" style={{position: 'relative', zIndex: 1}}>
                     <input
                       ref={searchInputRef}
                       type="text"
@@ -200,7 +205,18 @@ export default function Search() {
 
                   {/* Search Suggestions & Recent Searches */}
                   {showSuggestions && (
-                    <div className="position-absolute w-100 bg-white border rounded shadow-lg mt-1 p-3" style={{zIndex: 1000}}>
+                    <div 
+                      className="position-absolute w-100 bg-white border rounded shadow-lg p-3" 
+                      style={{
+                        zIndex: 10000,
+                        top: 'calc(100% + 0.5rem)',
+                        left: 0,
+                        maxHeight: '400px',
+                        overflowY: 'auto',
+                        boxShadow: '0 10px 40px rgba(0,0,0,0.25)',
+                        border: '2px solid #6f42c1'
+                      }}
+                    >
                       {/* Search Suggestions */}
                       {searchSuggestions.length > 0 && (
                         <div className="mb-3">
@@ -209,7 +225,7 @@ export default function Search() {
                             Suggestions
                           </small>
                           <div className="list-group list-group-flush">
-                            {searchSuggestions.slice(0, 5).map((suggestion, index) => (
+                            {searchSuggestions.map((suggestion, index) => (
                               <button
                                 key={`${suggestion.type}-${suggestion.id}-${index}`}
                                 type="button"
@@ -231,31 +247,36 @@ export default function Search() {
 
                       {/* Recent Searches */}
                       {recentSearches.length > 0 && (
-                        <div className="mb-3">
+                        <div className="mb-0">
                           <div className="d-flex align-items-center justify-content-between mb-2">
                             <small className="text-muted fw-bold">
                               <FaHistory className="me-1" />
-                              Recent Searches
+                              Recent Searches ({recentSearches.length})
                             </small>
                             <button 
                               type="button"
                               className="btn btn-sm btn-link text-muted p-0"
                               onClick={clearRecentSearches}
                             >
+                              <FaTimes className="me-1" />
                               Clear
                             </button>
                           </div>
                           <div className="d-flex flex-wrap gap-2">
-                            {recentSearches.slice(0, 5).map((search, index) => (
-                              <button
-                                key={index}
-                                type="button"
-                                className="btn btn-outline-secondary btn-sm"
-                                onClick={() => handleRecentSearchClick(search)}
-                              >
-                                {search}
-                              </button>
-                            ))}
+                            {recentSearches.map((search, index) => {
+                              console.log("Rendering recent search:", search, "at index:", index);
+                              return (
+                                <button
+                                  key={index}
+                                  type="button"
+                                  className="btn btn-outline-secondary btn-sm"
+                                  onClick={() => handleRecentSearchClick(search)}
+                                >
+                                  <FaHistory className="me-1" style={{fontSize: '10px'}} />
+                                  {search}
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
                       )}

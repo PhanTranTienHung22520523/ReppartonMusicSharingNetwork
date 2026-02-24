@@ -102,6 +102,13 @@ def analyze_music():
             # Analyze the audio file
             logger.info(f"Analyzing audio file: {filepath}")
             analysis_result = music_analyzer.analyze(filepath)
+            # Always log tempo and key for diagnostics
+            try:
+                t = analysis_result.get('tempo') if isinstance(analysis_result, dict) else None
+                k = analysis_result.get('key') if isinstance(analysis_result, dict) else None
+                logger.info(f"analyze endpoint - tempo={t}, key={k}")
+            except Exception:
+                logger.info("analyze endpoint - tempo/key unavailable")
             
             # Clean up temporary file
             file_handler.delete_file(filepath)
@@ -239,11 +246,15 @@ def recommend_by_user():
         
         user_id = data['user_id']
         listening_history = data.get('listening_history', [])
+        search_history = data.get('search_history', [])
+        preferred_genres = data.get('preferred_genres', [])
         limit = data.get('limit', 20)
         
         recommendations = song_recommender.recommend_by_user(
             user_id,
             listening_history,
+            search_history=search_history,
+            preferred_genres=preferred_genres,
             limit=limit
         )
         
@@ -475,11 +486,40 @@ def analyze_chords():
         try:
             # Analyze chords in the audio file
             logger.info(f"Analyzing chords in audio file: {filepath}")
+            # support compact/dominant-only responses by checking form param 'compact' or 'dominantOnly'
+            compact_flag = request.form.get('compact') or request.form.get('dominantOnly') or 'false'
+            compact = str(compact_flag).lower() in ('1', 'true', 'yes')
+
             chord_analysis = music_analyzer._analyze_chords_from_file(filepath)
+            # Also log chord dominant loop if present
+            try:
+                dl = chord_analysis.get('dominant_loop') if isinstance(chord_analysis, dict) else None
+                logger.info(f"analyze_chords - dominant_loop={dl}")
+            except Exception:
+                logger.info("analyze_chords - dominant_loop unavailable")
             
             # Clean up temporary file
             file_handler.delete_file(filepath)
             
+            if compact:
+                tempo = None
+                key = None
+                try:
+                    full = music_analyzer.analyze(filepath)
+                    tempo = full.get('tempo') if isinstance(full, dict) else None
+                    key = full.get('key') if isinstance(full, dict) else None
+                except Exception:
+                    # best-effort
+                    pass
+
+                return jsonify({
+                    'song_id': song_id,
+                    'dominant_loop': chord_analysis.get('dominant_loop') if isinstance(chord_analysis, dict) else None,
+                    'tempo': tempo,
+                    'key': key,
+                    'status': 'success'
+                }), 200
+
             return jsonify({
                 'song_id': song_id,
                 'chord_analysis': chord_analysis,
@@ -492,6 +532,122 @@ def analyze_chords():
             
     except Exception as e:
         logger.error(f"Error analyzing chords: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/ai/music/analyze-chords-url', methods=['POST'])
+def analyze_chords_url():
+    """
+    Analyze chord progression by downloading a remote file URL.
+
+    Request (JSON):
+        {
+            "file_url": "https://...",
+            "song_id": "optional"
+        }
+
+    Response mirrors `/analyze-chords` with `chord_analysis`.
+    """
+    try:
+        # Log raw request body and headers to help debug JSON/quoting issues from Windows clients
+        try:
+            raw_body = request.get_data()
+        except Exception:
+            raw_body = b''
+        logger.info(f"analyze_chords_url raw body bytes: {raw_body!r}")
+        try:
+            logger.info(f"analyze_chords_url headers: {dict(request.headers)}")
+        except Exception:
+            logger.info("analyze_chords_url headers: <unable to stringify>")
+
+        # Try to parse JSON and return a helpful error if parsing fails
+        try:
+            data = request.get_json()
+        except Exception as e:
+            logger.error(f"Failed to parse JSON in analyze_chords_url: {e}")
+            # Return raw body (utf-8 with replacement) to aid debugging from the client side
+            try:
+                body_text = raw_body.decode('utf-8', errors='replace')
+            except Exception:
+                body_text = '<non-decodable-bytes>'
+            return jsonify({'error': 'Invalid JSON in request body', 'raw_body': body_text}), 400
+
+        if not data or 'file_url' not in data:
+            return jsonify({'error': 'Missing file_url'}), 400
+
+        file_url = data['file_url']
+        song_id = data.get('song_id')
+
+        # Download remote file into upload folder
+        import requests
+        from urllib.parse import urlparse
+        import uuid
+
+        parsed = urlparse(file_url)
+        path = parsed.path
+        ext = 'mp3'
+        if '.' in path:
+            ext = path.rsplit('.', 1)[1]
+
+        unique_filename = f"{uuid.uuid4().hex}.{ext}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+
+        logger.info(f"Downloading remote file for chord analysis: {file_url} -> {filepath}")
+        resp = requests.get(file_url, stream=True, timeout=30)
+        if resp.status_code != 200:
+            logger.error(f"Failed to download file_url {file_url}: status {resp.status_code}")
+            return jsonify({'error': f'Failed to download file_url: {resp.status_code}'}), 502
+
+        with open(filepath, 'wb') as f:
+            for chunk in resp.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+
+        try:
+            logger.info(f"Analyzing downloaded file (full analysis + chords): {filepath}")
+            # run full analysis to get tempo/key and chords
+            analysis_result = music_analyzer.analyze(filepath)
+            chord_analysis = analysis_result.get('chords', {}) if isinstance(analysis_result, dict) else {}
+            tempo = analysis_result.get('tempo') if isinstance(analysis_result, dict) else None
+            key = analysis_result.get('key') if isinstance(analysis_result, dict) else None
+
+            # Log tempo, key and dominant loop validity for diagnostics
+            try:
+                dl = chord_analysis.get('dominant_loop') if isinstance(chord_analysis, dict) else None
+                logger.info(f"analyze_chords_url - tempo={tempo}, key={key}, dominant_loop={dl}")
+            except Exception:
+                logger.info("analyze_chords_url - tempo/key/dominant_loop unavailable")
+
+            # honor compact/dominantOnly flag passed in JSON body
+            compact = bool(data.get('compact') or data.get('dominantOnly'))
+
+            file_handler.delete_file(filepath)
+
+            if compact:
+                return jsonify({
+                    'song_id': song_id,
+                    'dominant_loop': chord_analysis.get('dominant_loop') if isinstance(chord_analysis, dict) else None,
+                    'tempo': tempo,
+                    'key': key,
+                    'status': 'success'
+                }), 200
+
+            return jsonify({
+                'song_id': song_id,
+                'chord_analysis': chord_analysis,
+                'tempo': tempo,
+                'key': key,
+                'analysis': analysis_result,
+                'status': 'success'
+            }), 200
+
+        except Exception as e:
+            file_handler.delete_file(filepath)
+            raise e
+
+    except Exception as e:
+        logger.error(f"Error in analyze_chords_url: {str(e)}")
         logger.error(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 

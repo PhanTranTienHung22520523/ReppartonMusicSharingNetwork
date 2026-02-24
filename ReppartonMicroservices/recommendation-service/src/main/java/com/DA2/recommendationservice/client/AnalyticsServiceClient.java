@@ -11,4 +11,10 @@ public interface AnalyticsServiceClient {
     @GetMapping("/api/analytics/listen-history/user/{userId}")
     Object getUserListenHistory(@PathVariable("userId") String userId,
                                @RequestParam("limit") int limit);
+
+    @GetMapping("/api/analytics/search-history/user/{userId}")
+    Object getUserSearchHistory(@PathVariable("userId") String userId);
+    
+    @GetMapping("/api/analytics/trending")
+    Object getTrendingSongs(@RequestParam("limit") int limit);
 }

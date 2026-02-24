@@ -48,7 +48,7 @@ public class PlaylistController {
 
     // Get playlist by ID
     @GetMapping("/{playlistId}")
-    public ResponseEntity<?> getPlaylist(@PathVariable String playlistId) {
+    public ResponseEntity<?> getPlaylist(@PathVariable("playlistId") String playlistId) {
         try {
             Playlist playlist = playlistService.getPlaylistById(playlistId)
                     .orElseThrow(() -> new RuntimeException("Playlist not found"));
@@ -62,9 +62,9 @@ public class PlaylistController {
     // Get user's playlists
     @GetMapping("/user/{userId}")
     public ResponseEntity<?> getUserPlaylists(
-            @PathVariable String userId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @PathVariable("userId") String userId,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size) {
         try {
             Pageable pageable = PageRequest.of(page, size);
             Page<Playlist> playlists = playlistService.getPlaylistsByUser(userId, pageable);
@@ -77,8 +77,8 @@ public class PlaylistController {
     // Get public playlists
     @GetMapping("/public")
     public ResponseEntity<?> getPublicPlaylists(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size) {
         try {
             Pageable pageable = PageRequest.of(page, size);
             Page<Playlist> playlists = playlistService.getPublicPlaylists(pageable);
@@ -91,8 +91,8 @@ public class PlaylistController {
     // Update playlist
     @PutMapping("/{playlistId}")
     public ResponseEntity<?> updatePlaylist(
-            @PathVariable String playlistId,
-            @RequestParam String userId,
+            @PathVariable("playlistId") String playlistId,
+            @RequestParam("userId") String userId,
             @RequestBody Playlist updates) {
         try {
             Playlist updated = playlistService.updatePlaylist(playlistId, userId, updates);
@@ -112,8 +112,8 @@ public class PlaylistController {
     // Delete playlist
     @DeleteMapping("/{playlistId}")
     public ResponseEntity<?> deletePlaylist(
-            @PathVariable String playlistId,
-            @RequestParam String userId) {
+            @PathVariable("playlistId") String playlistId,
+            @RequestParam("userId") String userId) {
         try {
             playlistService.deletePlaylist(playlistId, userId);
             return ResponseEntity.ok(Map.of(
@@ -131,9 +131,9 @@ public class PlaylistController {
     // Add song to playlist
     @PostMapping("/{playlistId}/songs/{songId}")
     public ResponseEntity<?> addSong(
-            @PathVariable String playlistId,
-            @PathVariable String songId,
-            @RequestParam String userId) {
+            @PathVariable("playlistId") String playlistId,
+            @PathVariable("songId") String songId,
+            @RequestParam("userId") String userId) {
         try {
             Playlist playlist = playlistService.addSongToPlaylist(playlistId, userId, songId);
             return ResponseEntity.ok(Map.of(
@@ -152,9 +152,9 @@ public class PlaylistController {
     // Remove song from playlist
     @DeleteMapping("/{playlistId}/songs/{songId}")
     public ResponseEntity<?> removeSong(
-            @PathVariable String playlistId,
-            @PathVariable String songId,
-            @RequestParam String userId) {
+            @PathVariable("playlistId") String playlistId,
+            @PathVariable("songId") String songId,
+            @RequestParam("userId") String userId) {
         try {
             Playlist playlist = playlistService.removeSongFromPlaylist(playlistId, userId, songId);
             return ResponseEntity.ok(Map.of(
@@ -173,7 +173,7 @@ public class PlaylistController {
     // Follow playlist
     @PostMapping("/{playlistId}/follow")
     public ResponseEntity<?> followPlaylist(
-            @PathVariable String playlistId,
+            @PathVariable("playlistId") String playlistId,
             @RequestBody Map<String, String> request) {
         try {
             String userId = request.get("userId");
@@ -193,8 +193,8 @@ public class PlaylistController {
     // Unfollow playlist
     @DeleteMapping("/{playlistId}/follow")
     public ResponseEntity<?> unfollowPlaylist(
-            @PathVariable String playlistId,
-            @RequestParam String userId) {
+            @PathVariable("playlistId") String playlistId,
+            @RequestParam("userId") String userId) {
         try {
             playlistService.unfollowPlaylist(playlistId, userId);
             return ResponseEntity.ok(Map.of(
@@ -212,8 +212,8 @@ public class PlaylistController {
     // Check if following
     @GetMapping("/{playlistId}/following")
     public ResponseEntity<?> isFollowing(
-            @PathVariable String playlistId,
-            @RequestParam String userId) {
+            @PathVariable("playlistId") String playlistId,
+            @RequestParam("userId") String userId) {
         try {
             boolean following = playlistService.isFollowing(playlistId, userId);
             return ResponseEntity.ok(Map.of("following", following));
@@ -224,7 +224,7 @@ public class PlaylistController {
 
     // Get followed playlists
     @GetMapping("/followed/{userId}")
-    public ResponseEntity<?> getFollowedPlaylists(@PathVariable String userId) {
+    public ResponseEntity<?> getFollowedPlaylists(@PathVariable("userId") String userId) {
         try {
             List<PlaylistFollower> followed = playlistService.getFollowedPlaylists(userId);
             return ResponseEntity.ok(followed);
@@ -236,13 +236,12 @@ public class PlaylistController {
     // Search playlists
     @GetMapping("/search")
     public ResponseEntity<?> searchPlaylists(
-            @RequestParam String query,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam("query") String query,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size) {
         try {
             Pageable pageable = PageRequest.of(page, size);
-            Page<Playlist> playlists = playlistService.searchPlaylists(query, pageable);
-            return ResponseEntity.ok(playlists);
+            return ResponseEntity.ok(playlistService.searchPlaylistsEnriched(query, pageable));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -264,7 +263,7 @@ public class PlaylistController {
 
     // Get playlists containing song
     @GetMapping("/song/{songId}")
-    public ResponseEntity<?> getPlaylistsWithSong(@PathVariable String songId) {
+    public ResponseEntity<?> getPlaylistsWithSong(@PathVariable("songId") String songId) {
         try {
             List<Playlist> playlists = playlistService.getPlaylistsContainingSong(songId);
             return ResponseEntity.ok(playlists);
